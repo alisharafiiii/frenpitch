@@ -52,15 +52,18 @@ export function OddsCard({
       <div className={styles.row}>
         {outcomes.map((o) => {
           const delta = match.oddsDelta[o];
+          const noOdds = match.odds[o] === 0;
           return (
             <button
               key={o}
               className={styles.oddsBtn}
+              disabled={noOdds}
+              style={noOdds ? { opacity: 0.45 } : undefined}
               onClick={() => onPick(match, o)}
             >
               <div className={styles.lbl}>{outcomeLabel[o](match)}</div>
               <div className={`${styles.val} ${ui.num}`}>
-                {match.odds[o].toFixed(2)}
+                {noOdds ? "soon" : match.odds[o].toFixed(2)}
               </div>
               <div
                 className={`${styles.delta} ${

@@ -42,6 +42,25 @@ async function main() {
   console.log(JSON.stringify(fixtures.slice(0, 3), null, 2));
   samples.fixtures = fixtures.slice(0, 5);
 
+  // 1b. odds snapshots for the first few fixtures
+  console.log("\n— odds snapshots —");
+  for (const f of (fixtures as Record<string, unknown>[]).slice(0, 4)) {
+    const id = f.FixtureId;
+    const res = await fetch(`${API}/api/odds/snapshot/${id}`, { headers });
+    let body: unknown = null;
+    try {
+      body = await res.json();
+    } catch { /* not json */ }
+    const count = Array.isArray(body) ? body.length : "not-array";
+    console.log(`fixture ${id} (${f.Participant1} vs ${f.Participant2}): status ${res.status}, entries: ${count}`);
+    if (Array.isArray(body) && body.length > 0) {
+      console.log(JSON.stringify(body.slice(0, 2), null, 2));
+    } else if (!Array.isArray(body) && body) {
+      console.log(JSON.stringify(body).slice(0, 600));
+    }
+    samples[`odds-snapshot-${id}`] = body;
+  }
+
   // 2. streams — listen 60s, print first 5 of each
   for (const kind of ["odds", "scores"] as const) {
     console.log(`\n— ${kind} stream (60s listen) —`);
