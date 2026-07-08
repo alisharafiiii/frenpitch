@@ -14,6 +14,7 @@ import * as anchor from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
+  createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
@@ -63,13 +64,16 @@ async function main() {
     process.exit(0);
   }
 
-  // anchor setup — pulls the program's IDL straight from the chain
+  // anchor setup — loads the program's IDL from scripts/idl/txoracle.json
   const wallet = new anchor.Wallet(keypair);
   const provider = new anchor.AnchorProvider(connection, wallet, {
     commitment: "confirmed",
   });
   anchor.setProvider(provider);
-  const program = await anchor.Program.at(PROGRAM_ID, provider);
+  const idl = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), "scripts", "idl", "txoracle.json"), "utf8")
+  ) as anchor.Idl;
+  const program = new anchor.Program(idl, provider);
 
   // derive the accounts the subscribe call needs
   const [tokenTreasuryPda] = PublicKey.findProgramAddressSync(
@@ -96,8 +100,18 @@ async function main() {
   );
 
   console.log(`📡 subscribing on-chain (free tier, level ${SERVICE_LEVEL_ID})...`);
+  // the program requires the wallet's TxL token account to exist (even empty)
+  const createAta = createAssociatedTokenAccountIdempotentInstruction(
+    keypair.publicKey, // payer
+    userTokenAccount,
+    keypair.publicKey, // owner
+    TXL_MINT,
+    TOKEN_2022_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  );
   const txSig = await (program.methods as any)
     .subscribe(SERVICE_LEVEL_ID, DURATION_WEEKS)
+    .preInstructions([createAta])
     .accounts({
       user: keypair.publicKey,
       pricingMatrix: pricingMatrixPda,
