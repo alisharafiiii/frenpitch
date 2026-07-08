@@ -4,4 +4,5 @@ out/
 build.log
 next-env.d.ts
 .env*
+.keys/
 target/

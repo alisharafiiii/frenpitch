@@ -6,17 +6,24 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "get-key": "tsx scripts/txline-activate.ts"
   },
   "dependencies": {
+    "@coral-xyz/anchor": "0.30.1",
+    "@solana/spl-token": "0.4.9",
+    "@solana/web3.js": "1.95.3",
+    "axios": "1.7.7",
     "next": "14.2.5",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "tweetnacl": "1.0.3"
   },
   "devDependencies": {
     "@types/node": "20.14.0",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
+    "tsx": "4.19.2",
     "typescript": "5.5.3"
   }
 }
