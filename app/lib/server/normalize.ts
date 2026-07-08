@@ -73,16 +73,14 @@ export function normalizeFixture(raw: Raw): Match | null {
  *    MarketPeriod: "half=1" | null, PriceNames: ["part1","draw","part2"],
  *    Prices: [4929, 2405, 2622] }  ← thousandths: 4929 = 4.929
  *  keepalives are bare { Ts } → return null. */
-export function normalizeOddsUpdate(raw: Raw, prev?: Odds): MatchEvent | null {
-  const fixtureId = pick<number | string>(raw, "FixtureId", "fixtureId");
-  if (fixtureId === undefined) return null; // keepalive
+function isFullMatchPeriod(period: string | undefined): boolean {
+  return !period || period.toLowerCase().includes("full");
+}
 
+/** decode a 1x2 market entry (PriceNames part1/draw/part2, thousandths) */
+function decode1x2(raw: Raw): Odds | null {
   const oddsType = pick<string>(raw, "SuperOddsType");
-  if (!oddsType || !oddsType.includes("1X2")) return null; // only match-result markets
-
-  // full-match market only (MarketPeriod null/empty/full*); half markets skipped
-  const period = pick<string>(raw, "MarketPeriod");
-  if (period && !period.toLowerCase().includes("full")) return null;
+  if (!oddsType || !oddsType.includes("1X2")) return null;
 
   const names = pick<string[]>(raw, "PriceNames");
   const prices = pick<number[]>(raw, "Prices");
@@ -96,8 +94,34 @@ export function normalizeOddsUpdate(raw: Raw, prev?: Odds): MatchEvent | null {
   const draw = at("draw");
   const away = at("part2");
   if (home === undefined || draw === undefined || away === undefined) return null;
+  return { home, draw, away };
+}
 
-  const odds: Odds = { home, draw, away };
+/** odds snapshot (array of market entries) → current full-match 1x2 odds.
+ *  prefers full-match markets, falls back to any 1x2; latest Ts wins. */
+export function extractSnapshotOdds(entries: Raw[]): Odds | null {
+  if (!Array.isArray(entries)) return null;
+  const candidates = entries
+    .map((e) => ({ e, odds: decode1x2(e) }))
+    .filter((c): c is { e: Raw; odds: Odds } => c.odds !== null)
+    .sort((a, b) => (pick<number>(b.e, "Ts") ?? 0) - (pick<number>(a.e, "Ts") ?? 0));
+  if (candidates.length === 0) return null;
+  const full = candidates.find((c) =>
+    isFullMatchPeriod(pick<string>(c.e, "MarketPeriod"))
+  );
+  return (full ?? candidates[0]).odds;
+}
+
+export function normalizeOddsUpdate(raw: Raw, prev?: Odds): MatchEvent | null {
+  const fixtureId = pick<number | string>(raw, "FixtureId", "fixtureId");
+  if (fixtureId === undefined) return null; // keepalive
+
+  // full-match market only (half markets skipped)
+  if (!isFullMatchPeriod(pick<string>(raw, "MarketPeriod"))) return null;
+
+  const odds = decode1x2(raw);
+  if (!odds) return null;
+  const { home, draw, away } = odds;
 
   // biggest mover vs previous snapshot
   let outcome: MatchEvent["outcome"];
