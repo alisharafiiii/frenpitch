@@ -50,6 +50,8 @@ export interface MatchEvent {
   /** for odds_move: which outcome moved and by how much */
   outcome?: Outcome;
   delta?: number;
+  /** untouched upstream payload (live mode) — for debugging + re-normalizing */
+  raw?: unknown;
 }
 
 // ---------- frens / picks ----------

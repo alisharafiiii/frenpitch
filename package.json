@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "get-key": "tsx scripts/txline-activate.ts"
+    "get-key": "tsx scripts/txline-activate.ts",
+    "probe": "tsx scripts/txline-probe.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.30.1",

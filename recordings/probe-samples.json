@@ -1,0 +1,165 @@
+{
+  "fixtures": [
+    {
+      "Ts": 1781787600000,
+      "StartTime": 1784386800000,
+      "Competition": "Friendlies",
+      "CompetitionId": 430,
+      "FixtureGroupId": 10116166,
+      "Participant1Id": 1378,
+      "Participant1": "Vietnam",
+      "Participant2Id": 1215,
+      "Participant2": "Myanmar",
+      "FixtureId": 18143850,
+      "Participant1IsHome": true
+    },
+    {
+      "Ts": 1782716400000,
+      "StartTime": 1790348400000,
+      "Competition": "Friendlies",
+      "CompetitionId": 430,
+      "FixtureGroupId": 10116166,
+      "Participant1Id": 1519,
+      "Participant1": "Australia",
+      "Participant2Id": 1634,
+      "Participant2": "Brazil",
+      "FixtureId": 18182808,
+      "Participant1IsHome": true
+    },
+    {
+      "Ts": 1782716400000,
+      "StartTime": 1790694000000,
+      "Competition": "Friendlies",
+      "CompetitionId": 430,
+      "FixtureGroupId": 10116166,
+      "Participant1Id": 1519,
+      "Participant1": "Australia",
+      "Participant2Id": 1634,
+      "Participant2": "Brazil",
+      "FixtureId": 18182864,
+      "Participant1IsHome": true
+    },
+    {
+      "Ts": 1783206000000,
+      "StartTime": 1783627200000,
+      "Competition": "World Cup",
+      "CompetitionId": 72,
+      "FixtureGroupId": 10115675,
+      "Participant1Id": 1999,
+      "Participant1": "France",
+      "Participant2Id": 2530,
+      "Participant2": "Morocco",
+      "FixtureId": 18209181,
+      "Participant1IsHome": true,
+      "GameState": 1
+    },
+    {
+      "Ts": 1783306800000,
+      "StartTime": 1783803600000,
+      "Competition": "World Cup",
+      "CompetitionId": 72,
+      "FixtureGroupId": 10115675,
+      "Participant1Id": 2661,
+      "Participant1": "Norway",
+      "Participant2Id": 1888,
+      "Participant2": "England",
+      "FixtureId": 18213979,
+      "Participant1IsHome": true,
+      "GameState": 1
+    }
+  ],
+  "odds": [
+    {
+      "FixtureId": 18213979,
+      "MessageId": "1836792764:00003:000042-10021-stab",
+      "Ts": 1783470966171,
+      "Bookmaker": "TXLineStablePriceDemargined",
+      "BookmakerId": 10021,
+      "SuperOddsType": "OVERUNDER_PARTICIPANT_GOALS",
+      "GameState": null,
+      "InRunning": false,
+      "MarketParameters": "line=1",
+      "MarketPeriod": "half=1",
+      "PriceNames": [
+        "over",
+        "under"
+      ],
+      "Prices": [
+        1965,
+        2036
+      ],
+      "Pct": [
+        "50.891",
+        "49.116"
+      ]
+    },
+    {
+      "Ts": 1783470972
+    },
+    {
+      "FixtureId": 18213979,
+      "MessageId": "1836792782:00003:000262-10021-stab",
+      "Ts": 1783470976173,
+      "Bookmaker": "TXLineStablePriceDemargined",
+      "BookmakerId": 10021,
+      "SuperOddsType": "1X2_PARTICIPANT_RESULT",
+      "GameState": null,
+      "InRunning": false,
+      "MarketParameters": null,
+      "MarketPeriod": "half=1",
+      "PriceNames": [
+        "part1",
+        "draw",
+        "part2"
+      ],
+      "Prices": [
+        4929,
+        2405,
+        2622
+      ],
+      "Pct": [
+        "20.288",
+        "41.580",
+        "38.139"
+      ]
+    },
+    {
+      "Ts": 1783470987
+    },
+    {
+      "FixtureId": 18213979,
+      "MessageId": "1836792820:00003:000088-10021-stab",
+      "Ts": 1783470998766,
+      "Bookmaker": "TXLineStablePriceDemargined",
+      "BookmakerId": 10021,
+      "SuperOddsType": "OVERUNDER_PARTICIPANT_GOALS",
+      "GameState": null,
+      "InRunning": false,
+      "MarketParameters": "line=1",
+      "MarketPeriod": "half=1",
+      "PriceNames": [
+        "over",
+        "under"
+      ],
+      "Prices": [
+        1970,
+        2031
+      ],
+      "Pct": [
+        "50.761",
+        "49.237"
+      ]
+    }
+  ],
+  "scores": [
+    {
+      "Ts": 1783471014
+    },
+    {
+      "Ts": 1783471029
+    },
+    {
+      "Ts": 1783471044
+    }
+  ]
+}

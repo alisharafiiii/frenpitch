@@ -1,38 +1,53 @@
 import { bus, ReplayEngine } from "./events";
 import { recordedEvents } from "@/app/data/recorded-events";
+import type { Match, MatchEvent } from "@/app/types";
 
 /**
- * TxLineClient — swap point between mock replay and the real feed.
+ * TxLineClient — feed switchboard for the browser.
  *
- * Real integration (fill in during days 1-2):
- *   quickstart: https://txline.txodds.com/documentation/quickstart
- *   worldcup docs: https://txline.txodds.com/documentation/worldcup
- *
- * 1. Sign up through Solana per hackathon rules, grab API key.
- * 2. Open the websocket / SSE stream for subscribed matches.
- * 3. Normalize incoming payloads into `MatchEvent` (app/types) —
- *    everything downstream (UI, settler, droid) already speaks it.
- * 4. RECORD every raw payload to disk. Recorded streams feed the
- *    ReplayEngine for the demo video and post-tournament judging.
+ *   live   → EventSource("/api/feed"): our server proxies + normalizes the
+ *            real txline sse streams (api token never reaches the browser)
+ *   replay → recorded events through ReplayEngine at 10x (demo mode,
+ *            and the automatic fallback when there's no key / no live match)
+ *   auto   → asks /api/fixtures; uses live if the key works, else replay
  */
-export type FeedMode = "replay" | "live";
+export type FeedMode = "replay" | "live" | "auto";
 
 export class TxLineClient {
   private replay?: ReplayEngine;
+  private source?: EventSource;
 
-  constructor(private mode: FeedMode = "replay", private speed = 10) {}
+  constructor(private mode: FeedMode = "auto", private speed = 10) {}
 
-  connect(): void {
-    if (this.mode === "replay") {
-      this.replay = new ReplayEngine(bus, recordedEvents, this.speed);
-      this.replay.start();
-      return;
+  /** returns fixtures when live, [] when replaying */
+  async connect(): Promise<{ live: boolean; matches: Match[] }> {
+    if (this.mode !== "replay") {
+      try {
+        const res = await fetch("/api/fixtures", { cache: "no-store" });
+        const data = (await res.json()) as { live: boolean; matches: Match[] };
+        if (data.live) {
+          this.source = new EventSource("/api/feed");
+          this.source.onmessage = (msg) => {
+            try {
+              bus.emit(JSON.parse(msg.data) as MatchEvent);
+            } catch {
+              /* skip malformed */
+            }
+          };
+          return data;
+        }
+      } catch {
+        /* fall through to replay */
+      }
+      if (this.mode === "live") throw new Error("live feed unavailable");
     }
-    // TODO(live): open real txline stream, normalize, bus.emit(event)
-    throw new Error("live mode not wired yet — add API key + ws url");
+    this.replay = new ReplayEngine(bus, recordedEvents, this.speed);
+    this.replay.start();
+    return { live: false, matches: [] };
   }
 
   disconnect(): void {
     this.replay?.stop();
+    this.source?.close();
   }
 }

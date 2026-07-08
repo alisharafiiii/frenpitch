@@ -19,10 +19,15 @@ export default function HomePage() {
   const [myPicks, setMyPicks] = useState<Pick[]>([]);
   const [slip, setSlip] = useState<{ match: Match; outcome: Outcome } | null>(null);
 
-  // wire the replay feed → live odds/score updates
+  const [isLive, setIsLive] = useState(false);
+
+  // auto feed: real txline stream when the key works, replay otherwise
   useEffect(() => {
-    const client = new TxLineClient("replay", 10);
-    client.connect();
+    const client = new TxLineClient("auto", 10);
+    client.connect().then(({ live, matches: fixtures }) => {
+      setIsLive(live);
+      if (live && fixtures.length > 0) setMatches(fixtures);
+    });
     const unsub = bus.subscribe((e: MatchEvent) => {
       setMatches((prev) =>
         prev.map((m) => {
@@ -74,7 +79,12 @@ export default function HomePage() {
   return (
     <>
       <div className={styles.hero}>
-        <h2>gm {user.username} 🫡</h2>
+        <h2>
+          gm {user.username} 🫡{" "}
+          <span style={{ fontSize: 10, fontWeight: 700, color: "var(--tma-fg-dim)" }}>
+            {isLive ? "· live feed" : "· replay demo"}
+          </span>
+        </h2>
         <p>
           {onlineFrens.length} frens live in the stadium · your matchday bankroll:{" "}
           <b className={ui.num}>{bankroll} pts</b>
