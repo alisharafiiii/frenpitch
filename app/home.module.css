@@ -1,0 +1,69 @@
+.hero {
+  background:
+    linear-gradient(135deg, rgba(108, 92, 231, 0.25), rgba(253, 121, 168, 0.12)),
+    var(--tma-bg-elevated);
+  border: 1px solid rgba(108, 92, 231, 0.3);
+  border-radius: var(--tma-radius);
+  padding: 16px;
+  will-change: transform, opacity;
+  animation: fadeIn 0.5s ease both;
+}
+
+.hero h2 {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+
+.hero p {
+  font-size: 12px;
+  color: var(--tma-fg-dim);
+  margin-bottom: 12px;
+}
+
+.hero p b {
+  color: var(--tma-fg);
+}
+
+.frensOnline {
+  display: flex;
+  align-items: center;
+}
+
+.miniAvatar {
+  width: 26px;
+  height: 26px;
+  font-size: 10px;
+  border: 2px solid var(--tma-bg);
+  margin-left: -8px;
+}
+
+.miniAvatar:first-child {
+  margin-left: 0;
+}
+
+.frensOnline span {
+  font-size: 11px;
+  color: var(--tma-fg-dim);
+  margin-left: 8px;
+}
+
+.myPick {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--tma-border);
+  font-size: 12px;
+}
+
+.myPick:last-child {
+  border-bottom: none;
+}
+
+.pickStatus {
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--tma-warning);
+}

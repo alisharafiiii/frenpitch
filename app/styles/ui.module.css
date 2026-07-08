@@ -1,0 +1,168 @@
+/* shared primitives — cards, buttons, pills, segments, inputs */
+
+.card {
+  background: var(--tma-bg-card);
+  border: 1px solid var(--tma-border);
+  border-radius: var(--tma-radius);
+  padding: 16px;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--tma-fg-muted);
+  text-transform: lowercase;
+  margin: 20px 0 10px;
+}
+
+.pill {
+  border-radius: var(--tma-radius-pill);
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pillLive {
+  composes: pill;
+  background: rgba(225, 112, 85, 0.15);
+  color: var(--tma-error);
+}
+
+.pillSoon {
+  composes: pill;
+  background: rgba(253, 203, 110, 0.12);
+  color: var(--tma-warning);
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tma-error);
+  animation: blink 1.2s infinite;
+}
+
+.btnPrimary {
+  background: var(--tma-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--tma-radius-sm);
+  padding: 14px 24px;
+  font-weight: 700;
+  font-size: 14px;
+  width: 100%;
+  transition: box-shadow 0.2s ease;
+  min-height: 44px;
+}
+
+.btnPrimary:active {
+  box-shadow: 0 0 24px var(--tma-primary-glow);
+}
+
+.btnGhost {
+  background: transparent;
+  color: var(--tma-primary);
+  border: 1px solid var(--tma-primary);
+  border-radius: var(--tma-radius-sm);
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 13px;
+  width: 100%;
+  min-height: 44px;
+}
+
+.seg {
+  display: flex;
+  background: var(--tma-bg-card);
+  border-radius: var(--tma-radius-pill);
+  padding: 4px;
+  gap: 4px;
+}
+
+.segItem {
+  flex: 1;
+  padding: 9px 4px;
+  border-radius: var(--tma-radius-pill);
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--tma-fg-dim);
+  transition: all 0.3s ease;
+  border: none;
+  background: transparent;
+  min-height: 36px;
+}
+
+.segItemOn {
+  composes: segItem;
+  background: var(--tma-primary);
+  color: #fff;
+}
+
+.input {
+  width: 100%;
+  background: var(--tma-bg-card);
+  border: 1px solid var(--tma-border);
+  border-radius: var(--tma-radius-sm);
+  padding: 13px 14px;
+  color: var(--tma-fg);
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 44px;
+}
+
+.input::placeholder {
+  color: var(--tma-fg-muted);
+}
+
+.formLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tma-fg-dim);
+  margin: 16px 0 6px;
+}
+
+.avatar {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.pos { color: var(--tma-success); }
+.neg { color: var(--tma-error); }
+.num { font-variant-numeric: tabular-nums; }
+
+.fairNote {
+  text-align: center;
+  font-size: 11px;
+  color: var(--tma-fg-muted);
+  margin-top: 10px;
+}
+
+/* skeleton loading */
+.skeleton {
+  border-radius: var(--tma-radius);
+  background: linear-gradient(
+    90deg,
+    var(--tma-bg-card) 25%,
+    var(--tma-bg-elevated) 50%,
+    var(--tma-bg-card) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--tma-fg-dim);
+  font-size: 13px;
+}

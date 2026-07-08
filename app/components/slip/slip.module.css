@@ -1,0 +1,99 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 90;
+}
+
+.slip {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: 100%;
+  max-width: 480px;
+  z-index: 100;
+  background: var(--tma-bg-elevated);
+  border-top: 1px solid rgba(108, 92, 231, 0.4);
+  border-radius: 20px 20px 0 0;
+  padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+  will-change: transform, opacity;
+  animation: slideUp 0.35s ease both;
+  box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.6);
+}
+
+.grab {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--tma-border);
+  margin: 0 auto 14px;
+}
+
+.matchRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.pick {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.sub {
+  font-size: 11px;
+  color: var(--tma-fg-dim);
+}
+
+.odds {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--tma-primary);
+}
+
+.stakeRow {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+
+.chip {
+  flex: 1;
+  background: var(--tma-bg-card);
+  border: 1px solid var(--tma-border);
+  border-radius: var(--tma-radius-sm);
+  padding: 10px 4px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--tma-fg);
+  min-height: 44px;
+}
+
+.chipOn {
+  composes: chip;
+  border-color: var(--tma-primary);
+  background: rgba(108, 92, 231, 0.15);
+  color: var(--tma-primary);
+}
+
+.payout {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--tma-fg-dim);
+  padding: 10px 2px;
+  border-top: 1px dashed var(--tma-border);
+}
+
+.payout b {
+  font-size: 14px;
+}
+
+.note {
+  font-size: 11px;
+  color: var(--tma-fg-muted);
+  padding: 0 2px 12px;
+}

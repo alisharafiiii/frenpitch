@@ -1,0 +1,159 @@
+.playersRow {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 6px 0 16px;
+  will-change: transform, opacity;
+  animation: fadeIn 0.5s ease both;
+}
+
+.player {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.playerAvatar {
+  width: 44px;
+  height: 44px;
+  font-size: 16px;
+}
+
+.playerMe .playerAvatar {
+  border: 2px solid var(--tma-primary);
+  box-shadow: 0 0 16px var(--tma-primary-glow);
+}
+
+.more {
+  background: var(--tma-bg-elevated);
+  font-size: 12px;
+  color: var(--tma-fg-dim);
+}
+
+.playerName {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.playerScore {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--tma-fg-dim);
+}
+
+.timerBar {
+  height: 6px;
+  background: var(--tma-bg-elevated);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.timerFill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--tma-primary), var(--tma-accent));
+  transition: width 1s linear;
+}
+
+.qCount {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tma-fg-muted);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.qText {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-align: center;
+  line-height: 1.35;
+  margin-bottom: 18px;
+}
+
+.answer {
+  background: var(--tma-bg-card);
+  border: 1px solid var(--tma-border);
+  border-radius: var(--tma-radius);
+  padding: 14px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  color: var(--tma-fg);
+  will-change: transform, opacity;
+  animation: slideUp 0.4s ease both;
+  transition: border-color 0.2s;
+  min-height: 44px;
+}
+
+.answer:active {
+  border-color: var(--tma-primary);
+}
+
+.correct {
+  border-color: var(--tma-success);
+  background: rgba(0, 184, 148, 0.1);
+}
+
+.wrong {
+  border-color: var(--tma-error);
+  background: rgba(225, 112, 85, 0.1);
+}
+
+.key {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--tma-bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--tma-fg-dim);
+}
+
+.finalRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--tma-border);
+  will-change: transform, opacity;
+  animation: slideUp 0.4s ease both;
+}
+
+.finalRow:last-child {
+  border-bottom: none;
+}
+
+.rank {
+  width: 20px;
+  font-weight: 800;
+  color: var(--tma-fg-muted);
+  font-size: 13px;
+}
+
+.finalAvatar {
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+}
+
+.finalName {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.finalScore {
+  font-size: 16px;
+}

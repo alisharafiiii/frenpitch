@@ -1,0 +1,37 @@
+.bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  height: 60px;
+  display: flex;
+  border-top: 1px solid var(--tma-border);
+  background: var(--tma-bg-card);
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 50;
+}
+
+.item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--tma-fg-muted);
+  text-decoration: none;
+  min-height: 44px;
+}
+
+.itemActive {
+  composes: item;
+  color: var(--tma-primary);
+}
+
+.ico {
+  font-size: 18px;
+}

@@ -1,0 +1,127 @@
+.pool {
+  text-align: center;
+  padding: 18px 16px;
+  margin-top: 14px;
+  background:
+    linear-gradient(135deg, rgba(0, 184, 148, 0.12), rgba(108, 92, 231, 0.12)),
+    var(--tma-bg-card);
+  border: 1px solid rgba(0, 184, 148, 0.25);
+  border-radius: var(--tma-radius);
+}
+
+.poolAmt {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.poolCur {
+  font-size: 14px;
+  color: var(--tma-success);
+  font-weight: 700;
+}
+
+.poolPer {
+  font-size: 11px;
+  color: var(--tma-fg-dim);
+  margin-top: 4px;
+}
+
+.splitViz {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.splitBar {
+  border-radius: 6px;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--tma-fg-dim);
+  min-width: 44px;
+}
+
+.splitBar:first-child {
+  background: rgba(253, 203, 110, 0.25);
+  color: var(--tma-warning);
+}
+
+.splitBar:nth-child(3) {
+  background: rgba(225, 112, 85, 0.2);
+  color: var(--tma-error);
+}
+
+.inviteRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--tma-border);
+  width: 100%;
+  background: transparent;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  color: var(--tma-fg);
+  min-height: 44px;
+}
+
+.inviteRow:last-child {
+  border-bottom: none;
+}
+
+.inviteAvatar {
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+}
+
+.inviteName {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+  text-align: left;
+}
+
+.check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--tma-border);
+  flex-shrink: 0;
+}
+
+.checkOn {
+  composes: check;
+  background: var(--tma-primary);
+  border-color: var(--tma-primary);
+  position: relative;
+}
+
+.checkOn::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.funded {
+  text-align: center;
+  padding: 14px;
+  border-radius: var(--tma-radius-sm);
+  background: rgba(0, 184, 148, 0.12);
+  border: 1px solid rgba(0, 184, 148, 0.35);
+  color: var(--tma-success);
+  font-weight: 700;
+  font-size: 13px;
+  will-change: transform, opacity;
+  animation: bounceIn 0.5s ease both;
+}

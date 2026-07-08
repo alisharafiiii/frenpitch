@@ -1,0 +1,64 @@
+.oddsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+  will-change: transform, opacity;
+  animation: slideUp 0.4s ease both;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.matchName {
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.oddsBtn {
+  flex: 1;
+  background: var(--tma-bg-elevated);
+  border: 1px solid var(--tma-border);
+  border-radius: var(--tma-radius-sm);
+  padding: 8px 4px;
+  text-align: center;
+  color: var(--tma-fg);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  min-height: 44px;
+}
+
+.oddsBtn:active {
+  border-color: var(--tma-primary);
+  box-shadow: 0 0 12px var(--tma-primary-glow);
+}
+
+.lbl {
+  font-size: 10px;
+  color: var(--tma-fg-muted);
+  font-weight: 600;
+}
+
+.val {
+  font-size: 15px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.delta {
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.flat {
+  color: var(--tma-fg-muted);
+}

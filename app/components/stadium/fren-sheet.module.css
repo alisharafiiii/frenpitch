@@ -1,0 +1,85 @@
+.sheet {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 5;
+  background: rgba(18, 18, 26, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(108, 92, 231, 0.4);
+  border-radius: 16px;
+  padding: 14px;
+  will-change: transform, opacity;
+  animation: slideUp 0.35s ease both;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5);
+}
+
+.close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: var(--tma-fg-muted);
+  font-size: 12px;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+
+.name {
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.sub {
+  font-size: 11px;
+  color: var(--tma-fg-dim);
+}
+
+.pnl {
+  margin-left: auto;
+  text-align: right;
+  padding-right: 20px;
+}
+
+.pnlLabel {
+  font-size: 9px;
+  color: var(--tma-fg-muted);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.pnlValue {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.betLine {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--tma-bg-elevated);
+  border-radius: var(--tma-radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.oddsMove {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
