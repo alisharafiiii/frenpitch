@@ -10,7 +10,14 @@ import { Redis } from "@upstash/redis";
  *    tour:{code}            hash → TournamentRecord
  *    tour:{code}:members    set  → tgIds
  */
-export const redis = Redis.fromEnv();
+let _redis: Redis | null = null;
+
+/** lazy init — vercel evaluates modules at build time before env vars
+ *  exist, so the client must only connect on the first real request */
+function redis(): Redis {
+  if (!_redis) _redis = Redis.fromEnv();
+  return _redis;
+}
 
 export interface UserRecord {
   id: string; // tg id
@@ -57,9 +64,9 @@ export async function getOrCreateUser(
   photoUrl?: string
 ): Promise<UserRecord> {
   const key = `user:${id}`;
-  const existing = await redis.hgetall<Record<string, string | number>>(key);
+  const existing = await redis().hgetall<Record<string, string | number>>(key);
   if (existing && existing.id) {
-    await redis.hset(key, { lastSeen: Date.now(), username, name, ...(photoUrl ? { photoUrl } : {}) });
+    await redis().hset(key, { lastSeen: Date.now(), username, name, ...(photoUrl ? { photoUrl } : {}) });
     return {
       ...(existing as unknown as UserRecord),
       username,
@@ -80,13 +87,13 @@ export async function getOrCreateUser(
     createdAt: Date.now(),
     lastSeen: Date.now(),
   };
-  await redis.hset(key, user as unknown as Record<string, unknown>);
-  await redis.sadd("users", id);
+  await redis().hset(key, user as unknown as Record<string, unknown>);
+  await redis().sadd("users", id);
   return user;
 }
 
 export async function getUser(id: string): Promise<UserRecord | null> {
-  const u = await redis.hgetall<Record<string, string | number>>(`user:${id}`);
+  const u = await redis().hgetall<Record<string, string | number>>(`user:${id}`);
   if (!u || !u.id) return null;
   return {
     ...(u as unknown as UserRecord),
@@ -97,20 +104,20 @@ export async function getUser(id: string): Promise<UserRecord | null> {
 }
 
 export async function getAllUsers(limit = 50): Promise<UserRecord[]> {
-  const ids = await redis.smembers("users");
+  const ids = await redis().smembers("users");
   const users = await Promise.all(ids.slice(0, limit).map((id) => getUser(String(id))));
   return users.filter((u): u is UserRecord => u !== null);
 }
 
 export async function createPick(pick: PickRecord): Promise<void> {
-  await redis.hset(`pick:${pick.id}`, pick as unknown as Record<string, unknown>);
-  await redis.lpush(`user:${pick.userId}:picks`, pick.id);
-  await redis.sadd("picks:open", pick.id);
-  await redis.hincrby(`user:${pick.userId}`, "bankroll", -pick.stake);
+  await redis().hset(`pick:${pick.id}`, pick as unknown as Record<string, unknown>);
+  await redis().lpush(`user:${pick.userId}:picks`, pick.id);
+  await redis().sadd("picks:open", pick.id);
+  await redis().hincrby(`user:${pick.userId}`, "bankroll", -pick.stake);
 }
 
 export async function getPick(id: string): Promise<PickRecord | null> {
-  const p = await redis.hgetall<Record<string, string | number>>(`pick:${id}`);
+  const p = await redis().hgetall<Record<string, string | number>>(`pick:${id}`);
   if (!p || !p.id) return null;
   return {
     ...(p as unknown as PickRecord),
@@ -121,18 +128,18 @@ export async function getPick(id: string): Promise<PickRecord | null> {
 }
 
 export async function getUserPicks(userId: string, limit = 10): Promise<PickRecord[]> {
-  const ids = await redis.lrange(`user:${userId}:picks`, 0, limit - 1);
+  const ids = await redis().lrange(`user:${userId}:picks`, 0, limit - 1);
   const picks = await Promise.all(ids.map((id) => getPick(String(id))));
   return picks.filter((p): p is PickRecord => p !== null);
 }
 
 export async function createTournament(t: TournamentRecord): Promise<void> {
-  await redis.hset(`tour:${t.code}`, t as unknown as Record<string, unknown>);
-  await redis.sadd(`tour:${t.code}:members`, t.creatorId);
+  await redis().hset(`tour:${t.code}`, t as unknown as Record<string, unknown>);
+  await redis().sadd(`tour:${t.code}:members`, t.creatorId);
 }
 
 export async function getTournament(code: string): Promise<TournamentRecord | null> {
-  const t = await redis.hgetall<Record<string, string | number>>(`tour:${code}`);
+  const t = await redis().hgetall<Record<string, string | number>>(`tour:${code}`);
   if (!t || !t.code) return null;
   return {
     ...(t as unknown as TournamentRecord),
@@ -145,14 +152,14 @@ export async function getTournament(code: string): Promise<TournamentRecord | nu
 export async function joinTournament(code: string, userId: string): Promise<boolean> {
   const t = await getTournament(code);
   if (!t || t.status !== "open") return false;
-  const size = await redis.scard(`tour:${code}:members`);
+  const size = await redis().scard(`tour:${code}:members`);
   if (size >= t.maxFrens) return false;
-  await redis.sadd(`tour:${code}:members`, userId);
+  await redis().sadd(`tour:${code}:members`, userId);
   return true;
 }
 
 export async function getTournamentMembers(code: string): Promise<UserRecord[]> {
-  const ids = await redis.smembers(`tour:${code}:members`);
+  const ids = await redis().smembers(`tour:${code}:members`);
   const users = await Promise.all(ids.map((id) => getUser(String(id))));
   return users.filter((u): u is UserRecord => u !== null);
 }
