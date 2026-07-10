@@ -45,7 +45,8 @@ export interface PickRecord {
 }
 
 export interface TournamentRecord {
-  code: string; // short invite code, also the passcode
+  code: string; // short invite code
+  pass?: string; // optional passcode set by the creator (minted mind style)
   name: string;
   buyInUsdc: number;
   split: string;
@@ -149,13 +150,18 @@ export async function getTournament(code: string): Promise<TournamentRecord | nu
   };
 }
 
-export async function joinTournament(code: string, userId: string): Promise<boolean> {
+export async function joinTournament(
+  code: string,
+  userId: string,
+  pass?: string
+): Promise<"ok" | "pass_required" | "closed"> {
   const t = await getTournament(code);
-  if (!t || t.status !== "open") return false;
+  if (!t || t.status !== "open") return "closed";
+  if (t.pass && t.pass !== (pass ?? "")) return "pass_required";
   const size = await redis().scard(`tour:${code}:members`);
-  if (size >= t.maxFrens) return false;
+  if (size >= t.maxFrens) return "closed";
   await redis().sadd(`tour:${code}:members`, userId);
-  return true;
+  return "ok";
 }
 
 export async function getTournamentMembers(code: string): Promise<UserRecord[]> {

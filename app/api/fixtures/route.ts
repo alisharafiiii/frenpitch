@@ -37,6 +37,13 @@ export async function GET() {
       })
     );
 
+    // bettable matches first, then by kickoff
+    matches.sort((a, b) => {
+      const aHas = a.odds.home > 0 ? 0 : 1;
+      const bHas = b.odds.home > 0 ? 0 : 1;
+      return aHas - bHas || a.kickoffUtc.localeCompare(b.kickoffUtc);
+    });
+
     return NextResponse.json({ live: true, matches });
   } catch (err) {
     console.error("fixtures fetch failed:", err);

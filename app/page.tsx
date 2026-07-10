@@ -42,6 +42,9 @@ export default function HomePage() {
   const [isLive, setIsLive] = useState(false);
 
   const [joinedTour, setJoinedTour] = useState<string | null>(null);
+  const [needPass, setNeedPass] = useState<string | null>(null);
+  const [passInput, setPassInput] = useState("");
+  const [passError, setPassError] = useState(false);
 
   // real account: login-or-signup via tg identity, load bankroll + picks.
   // if opened via an invite link (t.me/...?startapp=CODE) → join that
@@ -57,18 +60,27 @@ export default function HomePage() {
       });
 
     const code = startParam();
-    if (code) {
-      api<{ joined: boolean }>("/api/tournaments", { method: "PUT", body: { code } })
-        .then(() =>
-          api<{ tournament: { name: string } }>(`/api/tournaments?code=${code}`).then((t) =>
-            setJoinedTour(t.tournament.name)
-          )
-        )
-        .catch(() => {
-          /* invalid or full code — ignore */
-        });
-    }
+    if (code) tryJoin(code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const tryJoin = (code: string, pass?: string) => {
+    api<{ joined: boolean }>("/api/tournaments", { method: "PUT", body: { code, pass } })
+      .then(() => {
+        setNeedPass(null);
+        setPassError(false);
+        return api<{ tournament: { name: string } }>(`/api/tournaments?code=${code}`).then(
+          (t) => setJoinedTour(t.tournament.name)
+        );
+      })
+      .catch((err: Error) => {
+        if (err.message === "pass_required") {
+          setNeedPass(code);
+          if (pass !== undefined) setPassError(true);
+        }
+        /* invalid or full code — ignore */
+      });
+  };
 
   // auto feed: real txline stream when the key works, replay otherwise
   useEffect(() => {
@@ -158,6 +170,40 @@ export default function HomePage() {
 
   return (
     <>
+      {needPass && !joinedTour && (
+        <div
+          className={ui.card}
+          style={{
+            marginBottom: 10,
+            borderColor: "rgba(108,92,231,0.4)",
+            fontSize: 13,
+          }}
+        >
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>
+            🔐 this tournament is pass-protected
+          </div>
+          {passError && (
+            <div style={{ color: "var(--tma-error)", fontSize: 11, marginBottom: 6 }}>
+              wrong pass — ask your fren again
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              className={ui.input}
+              placeholder="enter pass from your fren"
+              value={passInput}
+              onChange={(e) => setPassInput(e.target.value)}
+            />
+            <button
+              className={ui.btnPrimary}
+              style={{ width: "auto", whiteSpace: "nowrap" }}
+              onClick={() => tryJoin(needPass, passInput)}
+            >
+              join ⚔️
+            </button>
+          </div>
+        </div>
+      )}
       {joinedTour && (
         <div
           className={ui.card}

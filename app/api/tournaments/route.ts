@@ -29,6 +29,7 @@ export async function POST(req: Request) {
 
   const t: TournamentRecord = {
     code: inviteCode(),
+    ...(body.pass ? { pass: String(body.pass).trim() } : {}),
     name: String(body.name),
     buyInUsdc: Number(body.buyInUsdc),
     split: String(body.split ?? "split_70_20_10"),
@@ -52,20 +53,26 @@ export async function GET(req: Request) {
   const t = await getTournament(code);
   if (!t) return NextResponse.json({ error: "not found" }, { status: 404 });
   const members = await getTournamentMembers(code);
+  const { pass: _pass, ...safe } = t; // never leak the pass
   return NextResponse.json({
-    tournament: t,
+    tournament: { ...safe, hasPass: Boolean(t.pass) },
     members: members.map((m) => ({ id: m.id, username: m.username, name: m.name })),
   });
 }
 
-/** PUT /api/tournaments — join. body: { code } */
+/** PUT /api/tournaments — join. body: { code, pass? } */
 export async function PUT(req: Request) {
   const who = identityFromRequest(req);
   await getOrCreateUser(who.id, who.username, who.name, who.photoUrl);
-  const { code } = (await req.json()) as { code?: string };
+  const { code, pass } = (await req.json()) as { code?: string; pass?: string };
   if (!code) return NextResponse.json({ error: "code required" }, { status: 400 });
-  const ok = await joinTournament(code, who.id);
-  if (!ok) return NextResponse.json({ error: "closed or full" }, { status: 400 });
+  const result = await joinTournament(code, who.id, pass);
+  if (result === "pass_required") {
+    return NextResponse.json({ error: "pass_required" }, { status: 403 });
+  }
+  if (result === "closed") {
+    return NextResponse.json({ error: "closed or full" }, { status: 400 });
+  }
   const members = await getTournamentMembers(code);
   return NextResponse.json({ joined: true, members: members.length });
 }
