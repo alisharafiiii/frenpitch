@@ -192,7 +192,19 @@ export default function StadiumPage() {
         <Link href="/tournaments/new" className={ui.btnPrimary} style={{ textAlign: "center", textDecoration: "none", display: "block" }}>
           ⚔️ create tournament
         </Link>
-        <button className={ui.btnGhost}>+ invite frens</button>
+        <button
+          className={ui.btnGhost}
+          onClick={() => {
+            const url = "https://t.me/frenpitch_bot";
+            const text =
+              "⚽ join me in the stadium — live picks, fren tournaments, football quizzes. see you on the pitch 🫡";
+            window.open(
+              `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`
+            );
+          }}
+        >
+          + invite frens
+        </button>
       </div>
     </>
   );
