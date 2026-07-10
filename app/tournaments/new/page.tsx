@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { PrizeSplit } from "@/app/types";
 import { mockFrens } from "@/app/data/mock-frens";
+import { api } from "@/app/lib/api";
 import ui from "@/app/styles/ui.module.css";
 import styles from "./new.module.css";
 
@@ -24,6 +25,7 @@ export default function NewTournamentPage() {
     new Set(mockFrens.slice(0, 3).map((f) => f.id))
   );
   const [funded, setFunded] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
 
   const pool = buyIn * (invited.size + 1); // + creator
   const splitDef = useMemo(() => SPLITS.find((s) => s.key === split)!, [split]);
@@ -37,10 +39,26 @@ export default function NewTournamentPage() {
     });
   };
 
-  const fund = () => {
-    // TODO(onchain): call escrow program create_tournament + join (creator),
-    // then send TG invite links with passcode. See programs/escrow.
+  const fund = async () => {
+    // TODO(onchain): escrow program create_tournament — see programs/escrow
+    try {
+      const res = await api<{ inviteLink: string }>("/api/tournaments", {
+        method: "POST",
+        body: { name, buyInUsdc: buyIn, split, maxFrens: 8 },
+      });
+      setInviteLink(res.inviteLink);
+    } catch {
+      /* offline dev */
+    }
     setFunded(true);
+  };
+
+  const share = () => {
+    if (!inviteLink) return;
+    const text = `⚔️ ${name} — ${buyIn} usdc buy-in. tap to join:`;
+    window.open(
+      `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(text)}`
+    );
   };
 
   return (
@@ -119,9 +137,16 @@ export default function NewTournamentPage() {
 
       <div style={{ marginTop: 16 }}>
         {funded ? (
-          <div className={styles.funded}>
-            escrow live on devnet 🔐 invites sent — frens join in 2 taps
-          </div>
+          <>
+            <div className={styles.funded}>
+              tournament live 🔐 share the invite — frens join in 2 taps
+            </div>
+            {inviteLink && (
+              <button className={ui.btnPrimary} style={{ marginTop: 10 }} onClick={share}>
+                📤 send invite link to frens
+              </button>
+            )}
+          </>
         ) : (
           <button className={ui.btnPrimary} onClick={fund}>
             fund {buyIn} usdc + send invites 🔗

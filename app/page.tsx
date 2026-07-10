@@ -7,6 +7,27 @@ import { mockFrens } from "@/app/data/mock-frens";
 import { bus } from "@/app/lib/events";
 import { TxLineClient } from "@/app/lib/txline";
 import { getTgUser } from "@/app/lib/telegram";
+import { api, startParam } from "@/app/lib/api";
+
+interface ServerPick {
+  id: string;
+  matchId: string;
+  matchLabel: string;
+  outcome: Outcome;
+  outcomeLabel: string;
+  lockedOdds: number;
+  stake: number;
+  status: "open" | "won" | "lost";
+}
+
+function toUiPick(p: ServerPick): Pick {
+  return {
+    ...p,
+    currentOdds: p.lockedOdds,
+    status: p.status === "open" ? "live" : p.status,
+    livePnl: 0,
+  };
+}
 import { OddsCard } from "./components/odds/OddsCard";
 import { PickSlip } from "./components/slip/PickSlip";
 import ui from "@/app/styles/ui.module.css";
@@ -20,6 +41,35 @@ export default function HomePage() {
   const [slip, setSlip] = useState<{ match: Match; outcome: Outcome } | null>(null);
 
   const [isLive, setIsLive] = useState(false);
+
+  const [joinedTour, setJoinedTour] = useState<string | null>(null);
+
+  // real account: login-or-signup via tg identity, load bankroll + picks.
+  // if opened via an invite link (t.me/...?startapp=CODE) → join that
+  // tournament first thing, like the minted mind pass flow
+  useEffect(() => {
+    api<{ user: { bankroll: number }; picks: ServerPick[] }>("/api/me")
+      .then(({ user: u, picks }) => {
+        setBankroll(u.bankroll);
+        setMyPicks(picks.map(toUiPick));
+      })
+      .catch(() => {
+        /* offline dev — keep local defaults */
+      });
+
+    const code = startParam();
+    if (code) {
+      api<{ joined: boolean }>("/api/tournaments", { method: "PUT", body: { code } })
+        .then(() =>
+          api<{ tournament: { name: string } }>(`/api/tournaments?code=${code}`).then((t) =>
+            setJoinedTour(t.tournament.name)
+          )
+        )
+        .catch(() => {
+          /* invalid or full code — ignore */
+        });
+    }
+  }, []);
 
   // auto feed: real txline stream when the key works, replay otherwise
   useEffect(() => {
@@ -55,29 +105,53 @@ export default function HomePage() {
 
   const onlineFrens = mockFrens.filter((f) => f.online);
 
-  const confirmPick = (stake: number) => {
+  const confirmPick = async (stake: number) => {
     if (!slip) return;
     const { match, outcome } = slip;
-    const pick: Pick = {
-      id: `mine-${Date.now()}`,
+    const body = {
       matchId: match.id,
       matchLabel: `${match.homeFlag} ${match.home.toLowerCase()} vs ${match.away.toLowerCase()}`,
       outcome,
       outcomeLabel:
         outcome === "draw" ? "draw" : outcome === "home" ? `${match.home.toLowerCase()} ML` : `${match.away.toLowerCase()} ML`,
       lockedOdds: match.odds[outcome],
-      currentOdds: match.odds[outcome],
       stake,
-      status: match.status === "upcoming" ? "upcoming" : "live",
-      livePnl: 0,
     };
-    setMyPicks((p) => [pick, ...p]);
-    setBankroll((b) => Math.max(0, b - stake));
+    try {
+      // persist server-side (real bankroll enforcement)
+      const res = await api<{ pick: ServerPick; bankroll: number }>("/api/picks", {
+        method: "POST",
+        body,
+      });
+      setMyPicks((p) => [toUiPick(res.pick), ...p]);
+      setBankroll(res.bankroll);
+    } catch {
+      // offline dev fallback — local only
+      setMyPicks((p) => [
+        { ...body, id: `local-${Date.now()}`, currentOdds: body.lockedOdds, status: "live", livePnl: 0 },
+        ...p,
+      ]);
+      setBankroll((b) => Math.max(0, b - stake));
+    }
     setSlip(null);
   };
 
   return (
     <>
+      {joinedTour && (
+        <div
+          className={ui.card}
+          style={{
+            marginBottom: 10,
+            borderColor: "rgba(0,184,148,0.35)",
+            background: "rgba(0,184,148,0.08)",
+            fontSize: 13,
+            fontWeight: 700,
+          }}
+        >
+          ⚔️ you&apos;re in — &ldquo;{joinedTour}&rdquo; · your fren is waiting 🫡
+        </div>
+      )}
       <div className={styles.hero}>
         <h2>
           gm {user.username} 🫡{" "}

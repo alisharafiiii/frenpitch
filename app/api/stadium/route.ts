@@ -1,0 +1,40 @@
+import { NextResponse } from "next/server";
+import { getAllUsers, getUserPicks } from "@/app/lib/server/db";
+
+export const dynamic = "force-dynamic";
+
+/** GET /api/stadium — every fren in the lobby with their latest pick.
+ *  positions are derived deterministically from the user id so each
+ *  fren always stands on their own spot on the pitch. */
+
+function posFor(id: string): { x: number; y: number } {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const x = 22 + (h % 57); // 22..78 %
+  const y = 16 + ((h >> 8) % 66); // 16..81 %
+  return { x, y };
+}
+
+export async function GET() {
+  const users = await getAllUsers();
+  const frens = await Promise.all(
+    users.map(async (u) => {
+      const picks = await getUserPicks(u.id, 3);
+      const live = picks.find((p) => p.status === "open");
+      const last = picks[0];
+      return {
+        id: u.id,
+        handle: u.username,
+        initial: (u.name[0] ?? "?").toUpperCase(),
+        photoUrl: u.photoUrl,
+        pnl: u.pnl,
+        streak: u.streak,
+        online: Date.now() - u.lastSeen < 10 * 60 * 1000,
+        ...posFor(u.id),
+        livePick: live ?? null,
+        lastPick: last ?? null,
+      };
+    })
+  );
+  return NextResponse.json({ frens });
+}

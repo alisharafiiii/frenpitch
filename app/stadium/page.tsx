@@ -7,8 +7,67 @@ import { mockFrens } from "@/app/data/mock-frens";
 import { bus } from "@/app/lib/events";
 import { TxLineClient } from "@/app/lib/txline";
 import { FrenSheet } from "@/app/components/stadium/FrenSheet";
+import { api } from "@/app/lib/api";
 import ui from "@/app/styles/ui.module.css";
 import styles from "./stadium.module.css";
+
+const GRADIENTS: [string, string][] = [
+  ["#00b894", "#55efc4"],
+  ["#e17055", "#fab1a0"],
+  ["#0984e3", "#74b9ff"],
+  ["#fdcb6e", "#ffeaa7"],
+  ["#a29bfe", "#6c5ce7"],
+  ["#fd79a8", "#e84393"],
+];
+
+interface ServerFrenPick {
+  id: string;
+  matchId: string;
+  matchLabel: string;
+  outcome: "home" | "draw" | "away";
+  outcomeLabel: string;
+  lockedOdds: number;
+  stake: number;
+  status: "open" | "won" | "lost";
+}
+
+interface ServerFren {
+  id: string;
+  handle: string;
+  initial: string;
+  pnl: number;
+  streak: number;
+  online: boolean;
+  x: number;
+  y: number;
+  livePick: ServerFrenPick | null;
+  lastPick: ServerFrenPick | null;
+}
+
+function toFren(f: ServerFren, i: number): Fren {
+  const mapPick = (p: ServerFrenPick | null): Fren["livePick"] =>
+    p
+      ? {
+          ...p,
+          currentOdds: p.lockedOdds,
+          status: p.status === "open" ? "live" : p.status,
+          livePnl: 0,
+        }
+      : undefined;
+  return {
+    id: f.id,
+    handle: f.handle,
+    initial: f.initial,
+    gradient: GRADIENTS[i % GRADIENTS.length],
+    pnl: f.pnl,
+    streak: f.streak,
+    online: f.online,
+    x: f.x,
+    y: f.y,
+    livePick: mapPick(f.livePick),
+    lastPick: mapPick(f.lastPick),
+  };
+}
 
 export default function StadiumPage() {
   const [frens, setFrens] = useState<Fren[]>(mockFrens);
@@ -17,9 +76,24 @@ export default function StadiumPage() {
   );
   const [goalFlash, setGoalFlash] = useState(false);
 
+  // real frens from the db; mock frens stay as lobby bots while the
+  // lobby is small so the stadium never feels empty
+  useEffect(() => {
+    api<{ frens: ServerFren[] }>("/api/stadium")
+      .then(({ frens: real }) => {
+        const mapped = real.map(toFren);
+        const fill = mockFrens.slice(0, Math.max(0, 7 - mapped.length));
+        setFrens([...mapped, ...fill]);
+        if (mapped.length > 0) setSelected(mapped[0]);
+      })
+      .catch(() => {
+        /* offline dev — keep mocks */
+      });
+  }, []);
+
   // live: goals ripple through the lobby, odds moves update fren pnl
   useEffect(() => {
-    const client = new TxLineClient("replay", 10);
+    const client = new TxLineClient("auto", 10);
     client.connect();
     const unsub = bus.subscribe((e: MatchEvent) => {
       if (e.type === "goal") {
