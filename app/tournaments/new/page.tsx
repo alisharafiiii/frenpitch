@@ -39,6 +39,7 @@ export default function NewTournamentPage() {
   const [isCustom, setIsCustom] = useState(false);
   const [customValue, setCustomValue] = useState("");
   const [pass, setPass] = useState("");
+  const [maxFrens, setMaxFrens] = useState(8);
   const [split, setSplit] = useState<PrizeSplit>("split_70_20_10");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [search, setSearch] = useState("");
@@ -95,7 +96,7 @@ export default function NewTournamentPage() {
     try {
       const res = await api<{ inviteLink: string }>("/api/tournaments", {
         method: "POST",
-        body: { name, buyInUsdc: effectiveBuyIn, split, maxFrens: 8, pass: pass || undefined },
+        body: { name, buyInUsdc: effectiveBuyIn, split, maxFrens, pass: pass || undefined },
       });
       setInviteLink(res.inviteLink);
     } catch {
@@ -158,6 +159,19 @@ export default function NewTournamentPage() {
         />
       )}
 
+      <div className={ui.formLabel}>max frens</div>
+      <div className={ui.seg}>
+        {[4, 8, 16].map((n) => (
+          <button
+            key={n}
+            className={maxFrens === n ? ui.segItemOn : ui.segItem}
+            onClick={() => setMaxFrens(n)}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+
       <div className={ui.formLabel}>passcode (optional — frens need it to join)</div>
       <input
         className={ui.input}
@@ -172,8 +186,8 @@ export default function NewTournamentPage() {
           <span className={styles.poolCur}>USDC</span>
         </div>
         <div className={styles.poolPer}>
-          {invited.size + 1} frens × {buyIn} usdc · escrowed onchain 🔐 · auto-payout on
-          final whistle
+          estimated — real pool grows as frens join ({effectiveBuyIn} usdc each, up to{" "}
+          {maxFrens}) · escrowed onchain 🔐 · auto-payout on final whistle
         </div>
       </div>
 

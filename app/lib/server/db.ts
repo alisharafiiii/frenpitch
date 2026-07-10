@@ -137,6 +137,7 @@ export async function getUserPicks(userId: string, limit = 10): Promise<PickReco
 export async function createTournament(t: TournamentRecord): Promise<void> {
   await redis().hset(`tour:${t.code}`, t as unknown as Record<string, unknown>);
   await redis().sadd(`tour:${t.code}:members`, t.creatorId);
+  await redis().sadd(`user:${t.creatorId}:tours`, t.code);
 }
 
 export async function getTournament(code: string): Promise<TournamentRecord | null> {
@@ -161,7 +162,26 @@ export async function joinTournament(
   const size = await redis().scard(`tour:${code}:members`);
   if (size >= t.maxFrens) return "closed";
   await redis().sadd(`tour:${code}:members`, userId);
+  await redis().sadd(`user:${userId}:tours`, code);
   return "ok";
+}
+
+/** all tournaments a user created or joined, with live member counts */
+export async function getUserTournaments(
+  userId: string
+): Promise<(TournamentRecord & { memberCount: number })[]> {
+  const codes = await redis().smembers(`user:${userId}:tours`);
+  const tours = await Promise.all(
+    codes.map(async (code) => {
+      const t = await getTournament(String(code));
+      if (!t) return null;
+      const memberCount = await redis().scard(`tour:${code}:members`);
+      return { ...t, memberCount };
+    })
+  );
+  return tours
+    .filter((t): t is TournamentRecord & { memberCount: number } => t !== null)
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export async function getTournamentMembers(code: string): Promise<UserRecord[]> {
