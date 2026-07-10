@@ -85,8 +85,8 @@ export default function StadiumPage() {
         setLoaded(true);
       })
       .catch(() => {
-        // offline dev — mocks so local work stays visual
-        setFrens(mockFrens);
+        // mocks ONLY on localhost — production shows the empty pitch
+        if (window.location.hostname === "localhost") setFrens(mockFrens);
         setLoaded(true);
       });
   }, []);

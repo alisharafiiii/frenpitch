@@ -34,7 +34,7 @@ import styles from "./home.module.css";
 
 export default function HomePage() {
   const user = useMemo(() => getTgUser(), []);
-  const [matches, setMatches] = useState<Match[]>(mockMatches);
+  const [matches, setMatches] = useState<Match[]>([]);
   const [bankroll, setBankroll] = useState(720);
   const [myPicks, setMyPicks] = useState<Pick[]>([]);
   const [slip, setSlip] = useState<{ match: Match; outcome: Outcome } | null>(null);
@@ -76,6 +76,8 @@ export default function HomePage() {
     client.connect().then(({ live, matches: fixtures }) => {
       setIsLive(live);
       if (live && fixtures.length > 0) setMatches(fixtures);
+      // replay demo data ONLY on localhost — production stays honest
+      else if (!live && window.location.hostname === "localhost") setMatches(mockMatches);
     });
     const unsub = bus.subscribe((e: MatchEvent) => {
       setMatches((prev) =>
@@ -232,6 +234,9 @@ export default function HomePage() {
       )}
 
       <div className={ui.sectionLabel}>🔥 hot odds — biggest moves last 10 min</div>
+      {matches.length === 0 && (
+        <div className={ui.emptyState}>loading fixtures from txline…</div>
+      )}
       {matches.map((m, i) => (
         <OddsCard key={m.id} match={m} index={i} onPick={(match, outcome) => setSlip({ match, outcome })} />
       ))}
