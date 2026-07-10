@@ -16,6 +16,16 @@ function posFor(id: string): { x: number; y: number } {
 }
 
 export async function GET() {
+  try {
+    return await buildStadium();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "unknown";
+    console.error("stadium failed:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function buildStadium() {
   const users = await getAllUsers();
   const frens = await Promise.all(
     users.map(async (u) => {
