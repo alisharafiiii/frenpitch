@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/app/lib/api";
+import { shareToContacts } from "@/app/lib/telegram";
 import ui from "@/app/styles/ui.module.css";
 
 interface MyTournament {
@@ -37,13 +38,11 @@ export default function TournamentsPage() {
       .catch(() => setLoaded(true));
   }, []);
 
-  const share = (t: MyTournament) => {
-    const url = `https://t.me/frenpitch_bot?startapp=${t.code}`;
-    const text = `⚔️ ${t.name} — ${t.buyInUsdc} usdc buy-in.${t.hasPass ? " pass-protected 🔐" : ""} tap to join:`;
-    window.open(
-      `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`
+  const share = (t: MyTournament) =>
+    shareToContacts(
+      `https://t.me/frenpitch_bot?startapp=${t.code}`,
+      `⚔️ ${t.name} — ${t.buyInUsdc} usdc buy-in.${t.hasPass ? " pass-protected 🔐" : ""} tap to join:`
     );
-  };
 
   return (
     <>

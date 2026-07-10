@@ -14,7 +14,7 @@ let _redis: Redis | null = null;
 
 /** lazy init — vercel evaluates modules at build time before env vars
  *  exist, so the client must only connect on the first real request */
-function redis(): Redis {
+export function redis(): Redis {
   if (!_redis) _redis = Redis.fromEnv();
   return _redis;
 }

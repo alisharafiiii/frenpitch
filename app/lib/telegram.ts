@@ -26,8 +26,23 @@ interface TelegramWindow extends Window {
       };
       ready?: () => void;
       expand?: () => void;
+      openTelegramLink?: (url: string) => void;
     };
   };
+}
+
+/** open telegram's native chat/contact picker with a prefilled invite.
+ *  inside telegram: native overlay with your contacts + profile pics.
+ *  outside (browser dev): falls back to a normal share link. */
+export function shareToContacts(url: string, text: string): void {
+  if (typeof window === "undefined") return;
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+  const tg = (window as TelegramWindow).Telegram?.WebApp;
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(shareUrl);
+  } else {
+    window.open(shareUrl);
+  }
 }
 
 export function getTgUser(): TgUser {

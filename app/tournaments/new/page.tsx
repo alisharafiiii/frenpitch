@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PrizeSplit } from "@/app/types";
 import { mockFrens } from "@/app/data/mock-frens";
 import { api } from "@/app/lib/api";
+import { getTgUser, shareToContacts } from "@/app/lib/telegram";
 import ui from "@/app/styles/ui.module.css";
 import styles from "./new.module.css";
 
@@ -45,22 +46,27 @@ export default function NewTournamentPage() {
   const [search, setSearch] = useState("");
   const [invited, setInvited] = useState<Set<string>>(new Set());
   const [funded, setFunded] = useState(false);
+  const [funding, setFunding] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [explorer, setExplorer] = useState<string | null>(null);
 
   // real platform frens (telegram doesn't expose phone contacts to mini
-  // apps — the share button reaches everyone else)
+  // apps — the share button reaches everyone else). you are excluded.
   useEffect(() => {
     api<{ frens: { id: string; handle: string; initial: string }[] }>("/api/stadium")
-      .then(({ frens }) =>
+      .then(({ frens }) => {
+        const meId = String(getTgUser().id);
         setContacts(
-          frens.map((f, i) => ({
-            id: f.id,
-            handle: f.handle,
-            initial: f.initial,
-            gradient: GRADIENTS[i % GRADIENTS.length],
-          }))
-        )
-      )
+          frens
+            .filter((f) => f.id !== meId && f.id !== "demo")
+            .map((f, i) => ({
+              id: f.id,
+              handle: f.handle,
+              initial: f.initial,
+              gradient: GRADIENTS[i % GRADIENTS.length],
+            }))
+        );
+      })
       .catch(() => {
         if (window.location.hostname === "localhost") {
           setContacts(
@@ -92,24 +98,39 @@ export default function NewTournamentPage() {
   };
 
   const fund = async () => {
-    // TODO(onchain): escrow program create_tournament — see programs/escrow
+    setFunding(true);
     try {
-      const res = await api<{ inviteLink: string }>("/api/tournaments", {
-        method: "POST",
-        body: { name, buyInUsdc: effectiveBuyIn, split, maxFrens, pass: pass || undefined },
-      });
+      const res = await api<{ inviteLink: string; tournament: { code: string } }>(
+        "/api/tournaments",
+        {
+          method: "POST",
+          body: { name, buyInUsdc: effectiveBuyIn, split, maxFrens, pass: pass || undefined },
+        }
+      );
       setInviteLink(res.inviteLink);
+      // real devnet escrow deposit (custodial wallet, invisible)
+      try {
+        const f = await api<{ explorer: string }>("/api/tournaments/fund", {
+          method: "POST",
+          body: { code: res.tournament.code },
+        });
+        setExplorer(f.explorer);
+      } catch {
+        /* escrow not configured yet — tournament still created */
+      }
+      setFunded(true);
     } catch {
       /* offline dev */
+      setFunded(true);
     }
-    setFunded(true);
+    setFunding(false);
   };
 
   const share = () => {
     if (!inviteLink) return;
-    const text = `⚔️ ${name} — ${effectiveBuyIn} usdc buy-in.${pass ? " pass-protected 🔐" : ""} tap to join:`;
-    window.open(
-      `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(text)}`
+    shareToContacts(
+      inviteLink,
+      `⚔️ ${name} — ${effectiveBuyIn} usdc buy-in.${pass ? " pass-protected 🔐" : ""} tap to join:`
     );
   };
 
@@ -247,8 +268,27 @@ export default function NewTournamentPage() {
         {funded ? (
           <>
             <div className={styles.funded}>
-              tournament live 🔐 share the invite — frens join in 2 taps
+              {explorer
+                ? "escrow funded onchain 🔐 devnet usdc locked in the vault"
+                : "tournament live 🔐 share the invite — frens join in 2 taps"}
             </div>
+            {explorer && (
+              <a
+                href={explorer}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: "block",
+                  textAlign: "center",
+                  fontSize: 11,
+                  color: "var(--tma-primary)",
+                  marginTop: 8,
+                  textDecoration: "none",
+                }}
+              >
+                view your deposit on solana explorer ↗
+              </a>
+            )}
             {inviteLink && (
               <button className={ui.btnPrimary} style={{ marginTop: 10 }} onClick={share}>
                 📤 send invite link to frens
@@ -256,8 +296,8 @@ export default function NewTournamentPage() {
             )}
           </>
         ) : (
-          <button className={ui.btnPrimary} onClick={fund}>
-            fund {buyIn} usdc + send invites 🔗
+          <button className={ui.btnPrimary} onClick={fund} disabled={funding}>
+            {funding ? "locking usdc in escrow…" : `fund ${effectiveBuyIn} usdc + send invites 🔗`}
           </button>
         )}
         <div className={ui.fairNote}>

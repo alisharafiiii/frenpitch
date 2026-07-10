@@ -45,6 +45,7 @@ export default function HomePage() {
   const [needPass, setNeedPass] = useState<string | null>(null);
   const [passInput, setPassInput] = useState("");
   const [passError, setPassError] = useState(false);
+  const [joinExplorer, setJoinExplorer] = useState<string | null>(null);
 
   // real account: login-or-signup via tg identity, load bankroll + picks.
   // if opened via an invite link (t.me/...?startapp=CODE) → join that
@@ -60,6 +61,11 @@ export default function HomePage() {
       });
 
     const code = startParam();
+    if (code?.startsWith("q")) {
+      // quiz lobby invite → straight to the quiz tab
+      window.location.href = `/quiz?code=${code}`;
+      return;
+    }
     if (code) tryJoin(code);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -69,6 +75,15 @@ export default function HomePage() {
       .then(() => {
         setNeedPass(null);
         setPassError(false);
+        // fund the buy-in from the invisible devnet wallet (real onchain tx)
+        api<{ explorer: string }>("/api/tournaments/fund", {
+          method: "POST",
+          body: { code },
+        })
+          .then((f) => setJoinExplorer(f.explorer))
+          .catch(() => {
+            /* escrow not configured — joined anyway */
+          });
         return api<{ tournament: { name: string } }>(`/api/tournaments?code=${code}`).then(
           (t) => setJoinedTour(t.tournament.name)
         );
@@ -216,6 +231,23 @@ export default function HomePage() {
           }}
         >
           ⚔️ you&apos;re in — &ldquo;{joinedTour}&rdquo; · your fren is waiting 🫡
+          {joinExplorer && (
+            <a
+              href={joinExplorer}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: "block",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--tma-primary)",
+                marginTop: 6,
+                textDecoration: "none",
+              }}
+            >
+              buy-in locked onchain — view on explorer ↗
+            </a>
+          )}
         </div>
       )}
       <div className={styles.hero}>

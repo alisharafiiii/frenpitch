@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
 const BOT = "frenpitch_bot";
 
 function inviteCode(): string {
-  return Math.random().toString(36).slice(2, 8);
+  // "t" prefix — quiz lobby codes use "q", the app routes by prefix
+  return `t${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /** POST /api/tournaments — create. body: { name, buyInUsdc, split, maxFrens } */

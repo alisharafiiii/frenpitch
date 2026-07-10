@@ -8,6 +8,7 @@ import { bus } from "@/app/lib/events";
 import { TxLineClient } from "@/app/lib/txline";
 import { FrenSheet } from "@/app/components/stadium/FrenSheet";
 import { api } from "@/app/lib/api";
+import { shareToContacts } from "@/app/lib/telegram";
 import ui from "@/app/styles/ui.module.css";
 import styles from "./stadium.module.css";
 
@@ -194,16 +195,14 @@ export default function StadiumPage() {
         </Link>
         <button
           className={ui.btnGhost}
-          onClick={() => {
-            const url = "https://t.me/frenpitch_bot";
-            const text =
-              "⚽ join me in the stadium — live picks, fren tournaments, football quizzes. see you on the pitch 🫡";
-            window.open(
-              `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`
-            );
-          }}
+          onClick={() =>
+            shareToContacts(
+              "https://t.me/frenpitch_bot",
+              "⚽ join me in the stadium — live picks, fren tournaments, football quizzes. see you on the pitch 🫡"
+            )
+          }
         >
-          + invite frens
+          👤 invite from contacts
         </button>
       </div>
     </>
