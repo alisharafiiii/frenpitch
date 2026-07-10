@@ -70,24 +70,24 @@ function toFren(f: ServerFren, i: number): Fren {
 }
 
 export default function StadiumPage() {
-  const [frens, setFrens] = useState<Fren[]>(mockFrens);
-  const [selected, setSelected] = useState<Fren | null>(
-    mockFrens.find((f) => f.handle === "mika.sol") ?? null
-  );
+  const [frens, setFrens] = useState<Fren[]>([]);
+  const [selected, setSelected] = useState<Fren | null>(null);
   const [goalFlash, setGoalFlash] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
-  // real frens from the db; mock frens stay as lobby bots while the
-  // lobby is small so the stadium never feels empty
+  // real frens only — no bots on the pitch
   useEffect(() => {
     api<{ frens: ServerFren[] }>("/api/stadium")
       .then(({ frens: real }) => {
         const mapped = real.map(toFren);
-        const fill = mockFrens.slice(0, Math.max(0, 7 - mapped.length));
-        setFrens([...mapped, ...fill]);
+        setFrens(mapped);
         if (mapped.length > 0) setSelected(mapped[0]);
+        setLoaded(true);
       })
       .catch(() => {
-        /* offline dev — keep mocks */
+        // offline dev — mocks so local work stays visual
+        setFrens(mockFrens);
+        setLoaded(true);
       });
   }, []);
 
@@ -147,6 +147,14 @@ export default function StadiumPage() {
           <div className={styles.boxTop} />
           <div className={styles.boxBot} />
         </div>
+
+        {loaded && frens.length === 0 && (
+          <div className={styles.emptyPitch}>
+            the pitch is empty 👀
+            <br />
+            invite your frens — first one in gets bragging rights
+          </div>
+        )}
 
         {frens.map((f) => {
           const state = f.livePick

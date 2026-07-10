@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Match, MatchEvent, Outcome, Pick } from "@/app/types";
 import { mockMatches } from "@/app/data/mock-matches";
-import { mockFrens } from "@/app/data/mock-frens";
 import { bus } from "@/app/lib/events";
 import { TxLineClient } from "@/app/lib/txline";
 import { getTgUser } from "@/app/lib/telegram";
@@ -103,7 +102,26 @@ export default function HomePage() {
     };
   }, []);
 
-  const onlineFrens = mockFrens.filter((f) => f.online);
+  const [onlineFrens, setOnlineFrens] = useState<
+    { id: string; handle: string; initial: string; live: boolean }[]
+  >([]);
+
+  // real frens for the online strip
+  useEffect(() => {
+    api<{ frens: { id: string; handle: string; initial: string; online: boolean; livePick: unknown }[] }>(
+      "/api/stadium"
+    )
+      .then(({ frens }) =>
+        setOnlineFrens(
+          frens
+            .filter((f) => f.online)
+            .map((f) => ({ id: f.id, handle: f.handle, initial: f.initial, live: !!f.livePick }))
+        )
+      )
+      .catch(() => {
+        /* offline dev — empty strip */
+      });
+  }, []);
 
   const confirmPick = async (stake: number) => {
     if (!slip) return;
@@ -163,26 +181,35 @@ export default function HomePage() {
           {onlineFrens.length} frens live in the stadium · your matchday bankroll:{" "}
           <b className={ui.num}>{bankroll} pts</b>
         </p>
-        <div className={styles.frensOnline}>
-          {onlineFrens.slice(0, 4).map((f) => (
-            <div
-              key={f.id}
-              className={`${ui.avatar} ${styles.miniAvatar}`}
-              style={{
-                background: `linear-gradient(135deg, ${f.gradient[0]}, ${f.gradient[1]})`,
-              }}
-            >
-              {f.initial}
-            </div>
-          ))}
-          <span>
-            {onlineFrens
-              .slice(0, 2)
-              .map((f) => f.handle)
-              .join(", ")}{" "}
-            + {Math.max(0, onlineFrens.length - 2)} sweating live picks
-          </span>
-        </div>
+        {onlineFrens.length > 0 ? (
+          <div className={styles.frensOnline}>
+            {onlineFrens.slice(0, 4).map((f, i) => (
+              <div
+                key={f.id}
+                className={`${ui.avatar} ${styles.miniAvatar}`}
+                style={{
+                  background: `linear-gradient(135deg, ${
+                    ["#00b894", "#e17055", "#0984e3", "#fd79a8"][i % 4]
+                  }, #6c5ce7)`,
+                }}
+              >
+                {f.initial}
+              </div>
+            ))}
+            <span>
+              {onlineFrens
+                .slice(0, 2)
+                .map((f) => f.handle)
+                .join(", ")}
+              {onlineFrens.length > 2 && ` + ${onlineFrens.length - 2} more`} in the
+              stadium
+            </span>
+          </div>
+        ) : (
+          <div className={styles.frensOnline}>
+            <span>no frens in the stadium yet — invite them from a tournament ⚔️</span>
+          </div>
+        )}
       </div>
 
       {myPicks.length > 0 && (
