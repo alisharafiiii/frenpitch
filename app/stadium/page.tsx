@@ -8,7 +8,7 @@ import { bus } from "@/app/lib/events";
 import { TxLineClient } from "@/app/lib/txline";
 import { FrenSheet } from "@/app/components/stadium/FrenSheet";
 import { Avatar } from "@/app/components/Avatar";
-import { api } from "@/app/lib/api";
+import { useApi } from "@/app/lib/useApi";
 import { shareToContacts } from "@/app/lib/telegram";
 import ui from "@/app/styles/ui.module.css";
 import styles from "./stadium.module.css";
@@ -79,21 +79,21 @@ export default function StadiumPage() {
   const [goalFlash, setGoalFlash] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // real frens only — no bots on the pitch
+  // real frens only — cached (instant on tab return), refreshed every 15s
+  const { data: stadiumData } = useApi<{ frens: ServerFren[] }>("/api/stadium", {
+    intervalMs: 15000,
+  });
   useEffect(() => {
-    api<{ frens: ServerFren[] }>("/api/stadium")
-      .then(({ frens: real }) => {
-        const mapped = real.map(toFren);
-        setFrens(mapped);
-        if (mapped.length > 0) setSelected(mapped[0]);
-        setLoaded(true);
-      })
-      .catch(() => {
-        // mocks ONLY on localhost — production shows the empty pitch
-        if (window.location.hostname === "localhost") setFrens(mockFrens);
-        setLoaded(true);
-      });
-  }, []);
+    if (stadiumData) {
+      const mapped = stadiumData.frens.map(toFren);
+      setFrens(mapped);
+      setSelected((cur) => cur ?? mapped[0] ?? null);
+      setLoaded(true);
+    } else if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+      setFrens(mockFrens);
+      setLoaded(true);
+    }
+  }, [stadiumData]);
 
   // live: goals ripple through the lobby, odds moves update fren pnl
   useEffect(() => {

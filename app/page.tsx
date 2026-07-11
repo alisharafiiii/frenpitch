@@ -7,6 +7,7 @@ import { bus } from "@/app/lib/events";
 import { TxLineClient } from "@/app/lib/txline";
 import { getTgUser } from "@/app/lib/telegram";
 import { api, waitForStartParam } from "@/app/lib/api";
+import { prefetch, useApi } from "@/app/lib/useApi";
 
 interface ServerPick {
   id: string;
@@ -49,18 +50,25 @@ export default function HomePage() {
   const [joinExplorer, setJoinExplorer] = useState<string | null>(null);
 
   // real account: login-or-signup via tg identity, load bankroll + picks.
+  // cached → instant on return visits
+  const { data: meData } = useApi<{ user: { bankroll: number }; picks: ServerPick[] }>(
+    "/api/me"
+  );
+  useEffect(() => {
+    if (meData) {
+      setBankroll(meData.user.bankroll);
+      setMyPicks(meData.picks.map(toUiPick));
+    }
+  }, [meData]);
+
+  // warm the other tabs' data so switching is instant
+  useEffect(() => {
+    prefetch(["/api/tournaments/mine"]);
+  }, []);
+
   // if opened via an invite link (t.me/...?startapp=CODE) → join that
   // tournament first thing, like the minted mind pass flow
   useEffect(() => {
-    api<{ user: { bankroll: number }; picks: ServerPick[] }>("/api/me")
-      .then(({ user: u, picks }) => {
-        setBankroll(u.bankroll);
-        setMyPicks(picks.map(toUiPick));
-      })
-      .catch(() => {
-        /* offline dev — keep local defaults */
-      });
-
     waitForStartParam((code) => {
       if (code.startsWith("q")) {
         // quiz lobby invite → straight to the quiz tab
@@ -133,39 +141,31 @@ export default function HomePage() {
     };
   }, []);
 
-  const [onlineFrens, setOnlineFrens] = useState<
-    { id: string; handle: string; initial: string; photoUrl?: string; live: boolean }[]
-  >([]);
+  // real frens for the online strip — cached, instant on tab return
+  const { data: stadiumData } = useApi<{
+    frens: {
+      id: string;
+      handle: string;
+      initial: string;
+      photoUrl?: string;
+      online: boolean;
+      livePick: unknown;
+    }[];
+  }>("/api/stadium", { intervalMs: 30000 });
 
-  // real frens for the online strip
-  useEffect(() => {
-    api<{
-      frens: {
-        id: string;
-        handle: string;
-        initial: string;
-        photoUrl?: string;
-        online: boolean;
-        livePick: unknown;
-      }[];
-    }>("/api/stadium")
-      .then(({ frens }) =>
-        setOnlineFrens(
-          frens
-            .filter((f) => f.online)
-            .map((f) => ({
-              id: f.id,
-              handle: f.handle,
-              initial: f.initial,
-              photoUrl: f.photoUrl,
-              live: !!f.livePick,
-            }))
-        )
-      )
-      .catch(() => {
-        /* offline dev — empty strip */
-      });
-  }, []);
+  const onlineFrens = useMemo(
+    () =>
+      (stadiumData?.frens ?? [])
+        .filter((f) => f.online)
+        .map((f) => ({
+          id: f.id,
+          handle: f.handle,
+          initial: f.initial,
+          photoUrl: f.photoUrl,
+          live: !!f.livePick,
+        })),
+    [stadiumData]
+  );
 
   const confirmPick = async (stake: number) => {
     if (!slip) return;

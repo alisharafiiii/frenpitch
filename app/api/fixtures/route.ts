@@ -5,6 +5,9 @@ import type { Match } from "@/app/types";
 
 export const dynamic = "force-dynamic";
 
+// warm-instance cache: fixtures + odds are refetched at most every 20s
+let cached: { at: number; body: { live: boolean; matches: Match[] } } | null = null;
+
 /** GET /api/fixtures — normalized fixtures from txline, with current
  *  1x2 odds pulled from the odds snapshot per fixture.
  *  returns { live: false } if no api token so the client falls back
@@ -12,6 +15,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   if (!getApiToken()) {
     return NextResponse.json({ live: false, matches: [] });
+  }
+  if (cached && Date.now() - cached.at < 20_000) {
+    return NextResponse.json(cached.body);
   }
   try {
     const raw = await txGet<Record<string, unknown>[]>("/api/fixtures/snapshot");
@@ -44,7 +50,8 @@ export async function GET() {
       return aHas - bHas || a.kickoffUtc.localeCompare(b.kickoffUtc);
     });
 
-    return NextResponse.json({ live: true, matches });
+    cached = { at: Date.now(), body: { live: true, matches } };
+    return NextResponse.json(cached.body);
   } catch (err) {
     console.error("fixtures fetch failed:", err);
     return NextResponse.json({ live: false, matches: [] });

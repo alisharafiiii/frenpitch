@@ -55,9 +55,31 @@ export async function GET(req: Request) {
   if (!t) return NextResponse.json({ error: "not found" }, { status: 404 });
   const members = await getTournamentMembers(code);
   const { pass: _pass, ...safe } = t; // never leak the pass
+
+  // live onchain pool (devnet vault balance) — null if escrow not set up
+  let onchainPool: number | null = null;
+  try {
+    const { vaultBalance } = await import("@/app/lib/server/solana");
+    onchainPool = await vaultBalance(code);
+  } catch {
+    /* escrow optional */
+  }
+
   return NextResponse.json({
-    tournament: { ...safe, hasPass: Boolean(t.pass) },
-    members: members.map((m) => ({ id: m.id, username: m.username, name: m.name })),
+    tournament: { ...safe, hasPass: Boolean(t.pass), onchainPool },
+    members: members
+      .map((m) => ({
+        id: m.id,
+        username: m.username,
+        name: m.name,
+        initial: (m.name[0] ?? "?").toUpperCase(),
+        photoUrl: `/api/avatar/${m.id}`,
+        pnl: m.pnl,
+        streak: m.streak,
+        online: Date.now() - m.lastSeen < 10 * 60 * 1000,
+        isCreator: m.id === t.creatorId,
+      }))
+      .sort((a, b) => b.pnl - a.pnl),
   });
 }
 
