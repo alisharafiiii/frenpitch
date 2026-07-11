@@ -42,6 +42,7 @@ export default function HomePage() {
   const [slip, setSlip] = useState<{ match: Match; outcome: Outcome } | null>(null);
 
   const [isLive, setIsLive] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   const [joinedTour, setJoinedTour] = useState<string | null>(null);
   const [needPass, setNeedPass] = useState<string | null>(null);
@@ -266,16 +267,58 @@ export default function HomePage() {
         </div>
       )}
       <div className={styles.hero}>
-        <h2>
-          gm {user.username} 🫡{" "}
-          <span style={{ fontSize: 10, fontWeight: 700, color: "var(--tma-fg-dim)" }}>
-            {isLive ? "· live feed" : "· replay demo"} · v4
-          </span>
-        </h2>
-        <p>
-          {onlineFrens.length} frens live in the stadium · your matchday bankroll:{" "}
-          <b className={ui.num}>{bankroll} pts</b>
-        </p>
+        {/* mini stadium art */}
+        <svg className={styles.heroArt} viewBox="0 0 120 90" aria-hidden>
+          <defs>
+            <radialGradient id="bowlGlow" cx="50%" cy="50%" r="60%">
+              <stop offset="0%" stopColor="rgba(168,130,255,0.55)" />
+              <stop offset="70%" stopColor="rgba(108,92,231,0.15)" />
+              <stop offset="100%" stopColor="transparent" />
+            </radialGradient>
+          </defs>
+          <ellipse cx="60" cy="46" rx="56" ry="34" fill="url(#bowlGlow)" />
+          <ellipse cx="60" cy="46" rx="50" ry="28" fill="#0a0a12" stroke="#a882ff" strokeWidth="2.5" opacity="0.95" />
+          <ellipse cx="60" cy="46" rx="42" ry="22" fill="#0d0d16" stroke="rgba(168,130,255,0.45)" strokeWidth="1" />
+          <ellipse cx="60" cy="46" rx="31" ry="15" fill="#0d4a2e" />
+          <ellipse cx="60" cy="46" rx="31" ry="15" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.6" />
+          <line x1="60" y1="31" x2="60" y2="61" stroke="rgba(255,255,255,0.4)" strokeWidth="0.6" />
+          <ellipse cx="60" cy="46" rx="6" ry="4" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.6" />
+          <rect x="36" y="41" width="7" height="10" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="0.6" />
+          <rect x="77" y="41" width="7" height="10" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="0.6" />
+          <text x="60" y="48.5" textAnchor="middle" fontSize="5" fontWeight="800" fill="rgba(255,255,255,0.5)">FP</text>
+          {Array.from({ length: 14 }).map((_, i) => {
+            const a = (i / 14) * Math.PI * 2;
+            return (
+              <circle
+                key={i}
+                cx={60 + Math.cos(a) * 50}
+                cy={46 + Math.sin(a) * 28}
+                r="0.9"
+                fill="#c9b3ff"
+                opacity="0.8"
+              />
+            );
+          })}
+        </svg>
+
+        <div className={styles.heroContent}>
+          <div className={styles.heroBadges}>
+            <span className={ui.pillLive}>
+              <span className={ui.liveDot} />
+              LIVE
+            </span>
+            <span className={styles.heroVersion}>
+              {isLive ? "live feed" : "replay demo"} · v5
+            </span>
+          </div>
+          <h2>gm {user.username} 🫡</h2>
+          <p>
+            {onlineFrens.length} frens live in the stadium 👥
+          </p>
+          <p>
+            your matchday bankroll:{" "}
+            <b className={`${ui.num} ${styles.bankroll}`}>{bankroll} pts</b>
+          </p>
         {onlineFrens.length > 0 ? (
           <div className={styles.frensOnline}>
             {onlineFrens.slice(0, 4).map((f, i) => (
@@ -303,6 +346,7 @@ export default function HomePage() {
             <span>no frens in the stadium yet — invite them from a tournament ⚔️</span>
           </div>
         )}
+        </div>
       </div>
 
       {myPicks.length > 0 && (
@@ -324,13 +368,21 @@ export default function HomePage() {
         </>
       )}
 
-      <div className={ui.sectionLabel}>🔥 hot odds — biggest moves last 10 min</div>
+      <div className={styles.sectionRow}>
+        <span className={styles.sectionTitle}>🔥 HOT ODDS</span>
+        <span className={styles.sectionSub}>biggest moves last 10 min</span>
+      </div>
       {matches.length === 0 && (
         <div className={ui.emptyState}>loading fixtures from txline…</div>
       )}
-      {matches.map((m, i) => (
+      {(showAll ? matches : matches.slice(0, 5)).map((m, i) => (
         <OddsCard key={m.id} match={m} index={i} onPick={(match, outcome) => setSlip({ match, outcome })} />
       ))}
+      {matches.length > 5 && !showAll && (
+        <button className={ui.btnGhost} onClick={() => setShowAll(true)}>
+          view all matches ›
+        </button>
+      )}
 
       {slip && (
         <PickSlip

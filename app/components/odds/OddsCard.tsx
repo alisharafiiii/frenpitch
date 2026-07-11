@@ -1,14 +1,23 @@
 "use client";
 
 import type { Match, Outcome } from "@/app/types";
-import ui from "@/app/styles/ui.module.css";
 import styles from "./odds.module.css";
+import ui from "@/app/styles/ui.module.css";
 
-const outcomeLabel: Record<Outcome, (m: Match) => string> = {
-  home: (m) => m.home.toLowerCase(),
-  draw: () => "draw",
-  away: (m) => m.away.toLowerCase(),
-};
+const RING_COLORS = [
+  "#6c5ce7",
+  "#e17055",
+  "#0984e3",
+  "#fdcb6e",
+  "#00b894",
+  "#fd79a8",
+];
+
+function ringFor(code: string): string {
+  let h = 0;
+  for (const c of code) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return RING_COLORS[h % RING_COLORS.length];
+}
 
 export function OddsCard({
   match,
@@ -19,62 +28,85 @@ export function OddsCard({
   onPick: (m: Match, o: Outcome) => void;
   index?: number;
 }) {
-  const outcomes: Outcome[] = ["home", "draw", "away"];
+  const outcomes: { key: Outcome; label: string }[] = [
+    { key: "home", label: match.home },
+    { key: "draw", label: "DRAW" },
+    { key: "away", label: match.away },
+  ];
+  const isLive = match.status === "live" || match.status === "ht";
+  const hasOdds = match.odds.home > 0;
+
   return (
-    <div
-      className={`${ui.card} ${styles.oddsCard}`}
-      style={{ animationDelay: `${index * 0.08}s` }}
-    >
-      <div className={styles.top}>
-        <div className={styles.matchName}>
-          {match.homeFlag} {match.home.toLowerCase()}
-          {match.status !== "upcoming" && (
-            <b className={ui.num}>
-              &nbsp;{match.scoreHome}–{match.scoreAway}&nbsp;
-            </b>
-          )}
-          {match.status === "upcoming" && <span>&nbsp;vs&nbsp;</span>}
-          {match.away.toLowerCase()} {match.awayFlag}
+    <div className={styles.card} style={{ animationDelay: `${index * 0.07}s` }}>
+      {/* teams */}
+      <div className={styles.teams}>
+        <div className={styles.team}>
+          <span className={styles.badge} style={{ borderColor: ringFor(match.home) }}>
+            {match.homeFlag}
+          </span>
+          <span className={styles.code}>{match.home}</span>
         </div>
-        {match.status === "live" || match.status === "ht" ? (
-          <span className={ui.pillLive}>
-            <span className={ui.liveDot} />
-            {match.status === "ht" ? "HT" : `LIVE ${match.minute}'`}
+        <span className={`${styles.vs} ${ui.num}`}>
+          {isLive || match.status === "ft"
+            ? `${match.scoreHome}–${match.scoreAway}`
+            : "vs"}
+        </span>
+        <div className={styles.team}>
+          <span className={styles.badge} style={{ borderColor: ringFor(match.away) }}>
+            {match.awayFlag}
           </span>
-        ) : match.status === "ft" ? (
-          <span className={ui.pillSoon}>FT</span>
-        ) : (
-          <span className={ui.pillSoon}>
-            {new Date(match.kickoffUtc).toISOString().slice(11, 16)} UTC
-          </span>
-        )}
+          <span className={styles.code}>{match.away}</span>
+        </div>
       </div>
-      <div className={styles.row}>
+
+      {/* odds boxes */}
+      <div className={styles.oddsRow}>
         {outcomes.map((o) => {
-          const delta = match.oddsDelta[o];
-          const noOdds = match.odds[o] === 0;
+          const value = match.odds[o.key];
+          const delta = match.oddsDelta[o.key];
+          const empty = value === 0;
           return (
             <button
-              key={o}
-              className={styles.oddsBtn}
-              disabled={noOdds}
-              style={noOdds ? { opacity: 0.45 } : undefined}
-              onClick={() => onPick(match, o)}
+              key={o.key}
+              className={styles.oddsBox}
+              disabled={empty}
+              onClick={() => onPick(match, o.key)}
             >
-              <div className={styles.lbl}>{outcomeLabel[o](match)}</div>
-              <div className={`${styles.val} ${ui.num}`}>
-                {noOdds ? "soon" : match.odds[o].toFixed(2)}
-              </div>
-              <div
-                className={`${styles.delta} ${
-                  delta && delta > 0 ? ui.pos : delta && delta < 0 ? ui.neg : styles.flat
-                }`}
-              >
-                {delta ? (delta > 0 ? `▲ +${delta.toFixed(2)}` : `▼ ${delta.toFixed(2)}`) : "—"}
-              </div>
+              <span className={styles.oddsLabel}>{o.label}</span>
+              <span className={`${styles.oddsValue} ${ui.num} ${empty ? styles.soon : ""}`}>
+                {empty ? "soon" : value.toFixed(2)}
+                {!empty && delta !== undefined && delta !== 0 && (
+                  <span className={delta > 0 ? styles.arrowUp : styles.arrowDown}>
+                    {delta > 0 ? "↑" : "↓"}
+                  </span>
+                )}
+              </span>
+              {empty && <span className={styles.dash}>–</span>}
             </button>
           );
         })}
+      </div>
+
+      {/* right rail: time / live */}
+      <div className={styles.rail}>
+        {isLive ? (
+          <>
+            <span className={styles.liveChip}>
+              <span className={ui.liveDot} />
+              {match.status === "ht" ? "HT" : `${match.minute}'`}
+            </span>
+            <span className={styles.railIcon}>⚡</span>
+          </>
+        ) : match.status === "ft" ? (
+          <span className={styles.timeChip}>FT</span>
+        ) : (
+          <>
+            <span className={styles.timeChip}>
+              {new Date(match.kickoffUtc).toISOString().slice(11, 16)} UTC
+            </span>
+            <span className={styles.railIcon}>{hasOdds ? "📈" : "⏱"}</span>
+          </>
+        )}
       </div>
     </div>
   );
