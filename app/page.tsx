@@ -31,6 +31,7 @@ function toUiPick(p: ServerPick): Pick {
 import { OddsCard } from "./components/odds/OddsCard";
 import { PickSlip } from "./components/slip/PickSlip";
 import { Avatar } from "./components/Avatar";
+import { IconFire } from "./components/icons";
 import ui from "@/app/styles/ui.module.css";
 import styles from "./home.module.css";
 
@@ -285,7 +286,7 @@ export default function HomePage() {
               {isLive ? "live feed" : "replay demo"} · v5
             </span>
           </div>
-          <h2>gm {user.username} 🫡</h2>
+          <h2>gm {user.username}</h2>
           <p>
             {onlineFrens.length} frens live in the stadium 👥
           </p>
@@ -358,7 +359,9 @@ export default function HomePage() {
       )}
 
       <div className={styles.sectionRow}>
-        <span className={styles.sectionTitle}>🔥 HOT ODDS</span>
+        <span className={styles.sectionTitle} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <IconFire size={17} /> HOT ODDS
+        </span>
         <span className={styles.sectionSub}>biggest moves last 10 min</span>
       </div>
       {matches.length === 0 && (
