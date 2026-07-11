@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getTgUser } from "@/app/lib/telegram";
+import { api } from "@/app/lib/api";
 import { Avatar } from "@/app/components/Avatar";
 import ui from "@/app/styles/ui.module.css";
 
@@ -9,6 +10,18 @@ import ui from "@/app/styles/ui.module.css";
  *  editable later. droid pairing lives here too. */
 export default function MePage() {
   const user = useMemo(() => getTgUser(), []);
+  const [serverIdentity, setServerIdentity] = useState<string>("checking…");
+  const [bridge, setBridge] = useState(false);
+
+  useEffect(() => {
+    setBridge(
+      typeof window !== "undefined" &&
+        Boolean((window as { Telegram?: { WebApp?: unknown } }).Telegram?.WebApp)
+    );
+    api<{ user: { id: string; username: string } }>("/api/me")
+      .then(({ user: u }) => setServerIdentity(`${u.username} (id ${u.id})`))
+      .catch(() => setServerIdentity("server unreachable"));
+  }, []);
 
   return (
     <>
@@ -23,7 +36,10 @@ export default function MePage() {
         <div>
           <div style={{ fontWeight: 800, fontSize: 16 }}>{user.username}</div>
           <div style={{ fontSize: 11, color: "var(--tma-fg-dim)" }}>
-            auto-created from telegram · tap to edit
+            tg bridge: {bridge ? "✅ connected" : "❌ not detected"} · v4
+          </div>
+          <div style={{ fontSize: 11, color: "var(--tma-fg-dim)" }}>
+            server sees: {serverIdentity}
           </div>
         </div>
       </div>

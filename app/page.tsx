@@ -268,7 +268,7 @@ export default function HomePage() {
         <h2>
           gm {user.username} 🫡{" "}
           <span style={{ fontSize: 10, fontWeight: 700, color: "var(--tma-fg-dim)" }}>
-            {isLive ? "· live feed" : "· replay demo"}
+            {isLive ? "· live feed" : "· replay demo"} · v4
           </span>
         </h2>
         <p>
