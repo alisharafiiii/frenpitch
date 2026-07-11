@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getTgUser } from "@/app/lib/telegram";
+import { useTgUser } from "@/app/lib/useTgUser";
 import { api } from "@/app/lib/api";
 import { Avatar } from "@/app/components/Avatar";
 import ui from "@/app/styles/ui.module.css";
@@ -9,7 +9,7 @@ import ui from "@/app/styles/ui.module.css";
 /** profile — auto-created from telegram login (pfp, name, id),
  *  editable later. droid pairing lives here too. */
 export default function MePage() {
-  const user = useMemo(() => getTgUser(), []);
+  const user = useTgUser();
   const [serverIdentity, setServerIdentity] = useState<string>("checking…");
   const [bridge, setBridge] = useState(false);
 

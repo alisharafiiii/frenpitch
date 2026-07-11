@@ -60,5 +60,5 @@ export function getTgUser(): TgUser {
       };
     }
   }
-  return { id: 0, name: "nabu", username: "nabu" }; // dev fallback
+  return { id: 0, name: "fren", username: "fren" }; // anonymous fallback
 }

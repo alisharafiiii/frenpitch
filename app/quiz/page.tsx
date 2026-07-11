@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { quizBank } from "@/app/data/mock-quiz";
 import { mockFrens } from "@/app/data/mock-frens";
-import { getTgUser, shareToContacts } from "@/app/lib/telegram";
+import { shareToContacts } from "@/app/lib/telegram";
+import { useTgUser } from "@/app/lib/useTgUser";
 import { api } from "@/app/lib/api";
 import type { QuizQuestion } from "@/app/types";
 import ui from "@/app/styles/ui.module.css";
@@ -150,7 +151,7 @@ function Lobby({
   onExit: () => void;
 }) {
   const [players, setPlayers] = useState<Player[]>([]);
-  const me = getTgUser();
+  const me = useTgUser();
 
   // poll lobby state every 2s
   useEffect(() => {
@@ -238,7 +239,7 @@ function LobbyMatch({
   const [now, setNow] = useState(Date.now());
   const [picked, setPicked] = useState<Record<number, number>>({});
   const [players, setPlayers] = useState<Player[]>([]);
-  const me = getTgUser();
+  const me = useTgUser();
 
   // clock tick
   useEffect(() => {
@@ -406,7 +407,7 @@ function LobbyMatch({
 /* ---------- bots match (the old flow, now opt-in practice) ---------- */
 
 function BotMatch({ onExit }: { onExit: () => void }) {
-  const me = getTgUser();
+  const me = useTgUser();
   const [players, setPlayers] = useState<Player[]>(() => [
     {
       id: "me",

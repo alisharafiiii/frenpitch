@@ -5,7 +5,7 @@ import type { Match, MatchEvent, Outcome, Pick } from "@/app/types";
 import { mockMatches } from "@/app/data/mock-matches";
 import { bus } from "@/app/lib/events";
 import { TxLineClient } from "@/app/lib/txline";
-import { getTgUser } from "@/app/lib/telegram";
+import { useTgUser } from "@/app/lib/useTgUser";
 import { api, waitForStartParam } from "@/app/lib/api";
 import { prefetch, useApi } from "@/app/lib/useApi";
 
@@ -35,7 +35,7 @@ import ui from "@/app/styles/ui.module.css";
 import styles from "./home.module.css";
 
 export default function HomePage() {
-  const user = useMemo(() => getTgUser(), []);
+  const user = useTgUser();
   const [matches, setMatches] = useState<Match[]>([]);
   const [bankroll, setBankroll] = useState(720);
   const [myPicks, setMyPicks] = useState<Pick[]>([]);
