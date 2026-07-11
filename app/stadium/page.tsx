@@ -182,8 +182,17 @@ export default function StadiumPage() {
                 fontSize={14}
                 className={styles.frenAvatar}
               />
-              <span className={styles.tag}>
-                {f.livePick ? (f.pnl >= 0 ? `+${f.pnl}` : f.pnl) : "idle"}
+              <span
+                className={styles.tag}
+                style={!f.livePick && f.online ? { color: "var(--tma-success)" } : undefined}
+              >
+                {f.livePick
+                  ? f.pnl >= 0
+                    ? `+${f.pnl}`
+                    : f.pnl
+                  : f.online
+                    ? "🟢 no pick yet"
+                    : "away"}
               </span>
             </button>
           );

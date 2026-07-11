@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAllUsers, getUserPicks } from "@/app/lib/server/db";
+import { identityFromRequest } from "@/app/lib/server/auth";
+import { getAllUsers, getUserPicks, redis } from "@/app/lib/server/db";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +18,15 @@ function posFor(id: string): { x: number; y: number } {
 
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    // being in the stadium counts as being online — heartbeat the caller
+    const who = identityFromRequest(req);
+    if (who.id !== "demo") {
+      await redis()
+        .hset(`user:${who.id}`, { lastSeen: Date.now() })
+        .catch(() => {});
+    }
     return await buildStadium();
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown";
