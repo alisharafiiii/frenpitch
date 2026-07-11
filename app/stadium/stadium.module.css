@@ -40,8 +40,9 @@
     radial-gradient(ellipse 90% 35% at 50% -8%, rgba(108, 92, 231, 0.22), transparent 60%),
     radial-gradient(ellipse 130% 80% at 50% 55%, #0c0c11 0%, #060608 70%, #030304 100%);
   border: 1px solid rgba(108, 92, 231, 0.18);
-  height: 52dvh;
-  min-height: 380px;
+  /* fill the screen: viewport minus header, ctas, and nav */
+  height: calc(100dvh - 248px);
+  min-height: 420px;
   will-change: transform, opacity;
   animation: fadeIn 0.5s ease both;
   transition: box-shadow 0.3s;

@@ -49,26 +49,37 @@ interface ServerFren {
   lastPick: ServerFrenPick | null;
 }
 
-/** max frens on the pitch — a full starting XI. everyone else sits in
- *  the stands (most recently active play, the rest watch) */
+/** max frens on the pitch — a full starting XI in formation.
+ *  most recently active take the field. */
 const MAX_ON_PITCH = 11;
 
-/** stand seats around the bowl: x/y in %, s = perspective scale */
-const STAND_SEATS: { x: number; y: number; s: number }[] = [
-  { x: 20, y: 12, s: 0.5 },
-  { x: 36, y: 8, s: 0.46 },
-  { x: 50, y: 7, s: 0.46 },
-  { x: 64, y: 8, s: 0.46 },
-  { x: 80, y: 12, s: 0.5 },
-  { x: 9, y: 26, s: 0.55 },
-  { x: 91, y: 26, s: 0.55 },
-  { x: 6, y: 42, s: 0.6 },
-  { x: 94, y: 42, s: 0.6 },
-  { x: 6, y: 58, s: 0.65 },
-  { x: 94, y: 58, s: 0.65 },
-  { x: 9, y: 72, s: 0.7 },
-  { x: 91, y: 72, s: 0.7 },
+/** 1-4-3-3 formation, container % — gk at the far goal, strikers near */
+const FORMATION: { x: number; y: number }[] = [
+  { x: 50, y: 13 }, // gk
+  { x: 24, y: 26 }, // back four
+  { x: 41, y: 24 },
+  { x: 59, y: 24 },
+  { x: 76, y: 26 },
+  { x: 27, y: 41 }, // midfield three
+  { x: 50, y: 38 },
+  { x: 73, y: 41 },
+  { x: 20, y: 57 }, // front three
+  { x: 50, y: 60 },
+  { x: 80, y: 57 },
 ];
+
+/** touchline spots — benches along both sidelines, right by the pitch.
+ *  alternating left/right, top to bottom. */
+const SIDELINE_SEATS: { x: number; y: number; s: number }[] = Array.from(
+  { length: 16 },
+  (_, i) => {
+    const row = Math.floor(i / 2);
+    const left = i % 2 === 0;
+    const y = 16 + row * 7.5; // 16%..68.5%
+    const inset = 3.5 + (y / 70) * 4; // sidelines widen toward the near end
+    return { x: left ? inset : 100 - inset, y, s: 0.6 + (y / 70) * 0.2 };
+  }
+);
 
 function toFren(f: ServerFren, i: number): Fren {
   const mapPick = (p: ServerFrenPick | null): Fren["livePick"] =>
@@ -157,16 +168,6 @@ export default function StadiumPage() {
   const liveCount = frens.filter((f) => f.livePick).length;
   const meId = String(me.id);
   const myFren = frens.find((f) => f.id === meId);
-
-  /** project flat (x,y)% onto the perspective pitch: rows get narrower
-   *  toward the far goal, like the tv camera view */
-  const project = (x: number, y: number) => {
-    const yNorm = Math.min(1, Math.max(0, (y - 12) / 74)); // 0 far → 1 near
-    const top = 20 + yNorm * 48; // 20%..68% of container height
-    const width = 0.42 + 0.52 * yNorm; // narrow at top, wide at bottom
-    const left = 50 + (x - 50) * width;
-    return { left, top };
-  };
 
   return (
     <>
@@ -336,8 +337,9 @@ export default function StadiumPage() {
           </div>
         )}
 
-        {/* starting XI on the pitch — perspective scaled */}
-        {frens.slice(0, MAX_ON_PITCH).map((f) => {
+        {/* starting XI in formation — most recently active play */}
+        {frens.slice(0, MAX_ON_PITCH).map((f, i) => {
+          const slot = FORMATION[i];
           const state = f.livePick
             ? f.pnl >= 0
               ? styles.frenUp
@@ -347,15 +349,14 @@ export default function StadiumPage() {
               : "";
           const sel = selected?.id === f.id ? styles.frenSelected : "";
           const away = !f.online ? styles.away : "";
-          const pos = project(f.x, f.y);
-          const scale = 0.78 + 0.3 * ((pos.top - 20) / 48); // smaller when far
+          const scale = 0.78 + 0.3 * ((slot.y - 13) / 47); // smaller when far
           return (
             <button
               key={f.id}
               className={`${styles.fren} ${state} ${sel} ${away}`}
               style={{
-                left: `${pos.left}%`,
-                top: `${pos.top}%`,
+                left: `${slot.x}%`,
+                top: `${slot.y}%`,
                 transform: `translate(-50%, -50%) scale(${scale})`,
               }}
               onClick={() => setSelected(f)}
@@ -379,9 +380,9 @@ export default function StadiumPage() {
           );
         })}
 
-        {/* the rest watch from the stands — small, perspective seated */}
-        {frens.slice(MAX_ON_PITCH, MAX_ON_PITCH + STAND_SEATS.length).map((f, i) => {
-          const seat = STAND_SEATS[i];
+        {/* the rest wait on the touchlines — right by the pitch */}
+        {frens.slice(MAX_ON_PITCH, MAX_ON_PITCH + SIDELINE_SEATS.length).map((f, i) => {
+          const seat = SIDELINE_SEATS[i];
           const sel = selected?.id === f.id ? styles.frenSelected : "";
           return (
             <button
@@ -409,10 +410,10 @@ export default function StadiumPage() {
           );
         })}
 
-        {/* overflow count if even the stands are full */}
-        {frens.length > MAX_ON_PITCH + STAND_SEATS.length && (
+        {/* overflow count if even the touchlines are full */}
+        {frens.length > MAX_ON_PITCH + SIDELINE_SEATS.length && (
           <span className={styles.overflowBadge}>
-            +{frens.length - MAX_ON_PITCH - STAND_SEATS.length} more in the concourse
+            +{frens.length - MAX_ON_PITCH - SIDELINE_SEATS.length} more warming up
           </span>
         )}
 

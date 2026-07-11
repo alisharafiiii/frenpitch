@@ -267,50 +267,9 @@ export default function HomePage() {
         </div>
       )}
       <div className={styles.hero}>
-        {/* rendered hero art (public/hero-stadium.png) — svg below is the
-            instant fallback while it loads / if missing */}
+        {/* full-bleed hero art (public/hero-stadium.webp) */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/hero-stadium.webp"
-          alt=""
-          className={styles.heroArtImg}
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
-        />
-        {/* mini stadium art */}
-        <svg className={styles.heroArt} viewBox="0 0 120 90" aria-hidden>
-          <defs>
-            <radialGradient id="bowlGlow" cx="50%" cy="50%" r="60%">
-              <stop offset="0%" stopColor="rgba(168,130,255,0.55)" />
-              <stop offset="70%" stopColor="rgba(108,92,231,0.15)" />
-              <stop offset="100%" stopColor="transparent" />
-            </radialGradient>
-          </defs>
-          <ellipse cx="60" cy="46" rx="56" ry="34" fill="url(#bowlGlow)" />
-          <ellipse cx="60" cy="46" rx="50" ry="28" fill="#0a0a12" stroke="#a882ff" strokeWidth="2.5" opacity="0.95" />
-          <ellipse cx="60" cy="46" rx="42" ry="22" fill="#0d0d16" stroke="rgba(168,130,255,0.45)" strokeWidth="1" />
-          <ellipse cx="60" cy="46" rx="31" ry="15" fill="#0d4a2e" />
-          <ellipse cx="60" cy="46" rx="31" ry="15" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.6" />
-          <line x1="60" y1="31" x2="60" y2="61" stroke="rgba(255,255,255,0.4)" strokeWidth="0.6" />
-          <ellipse cx="60" cy="46" rx="6" ry="4" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.6" />
-          <rect x="36" y="41" width="7" height="10" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="0.6" />
-          <rect x="77" y="41" width="7" height="10" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="0.6" />
-          <text x="60" y="48.5" textAnchor="middle" fontSize="5" fontWeight="800" fill="rgba(255,255,255,0.5)">FP</text>
-          {Array.from({ length: 14 }).map((_, i) => {
-            const a = (i / 14) * Math.PI * 2;
-            return (
-              <circle
-                key={i}
-                cx={60 + Math.cos(a) * 50}
-                cy={46 + Math.sin(a) * 28}
-                r="0.9"
-                fill="#c9b3ff"
-                opacity="0.8"
-              />
-            );
-          })}
-        </svg>
+        <img src="/hero-stadium.webp" alt="" className={styles.heroArtImg} />
 
         <div className={styles.heroContent}>
           <div className={styles.heroBadges}>
@@ -370,8 +329,23 @@ export default function HomePage() {
                   {p.matchLabel.split(" vs")[0]} {p.outcomeLabel}{" "}
                   <b className={ui.num}>@ {p.lockedOdds.toFixed(2)}</b> · {p.stake} pts
                 </span>
-                <span className={styles.pickStatus}>
-                  {p.status === "upcoming" ? "upcoming" : p.status === "live" ? "sweating 🔥" : p.status}
+                <span
+                  className={styles.pickStatus}
+                  style={
+                    p.status === "won"
+                      ? { color: "var(--tma-success)" }
+                      : p.status === "lost"
+                        ? { color: "var(--tma-error)" }
+                        : undefined
+                  }
+                >
+                  {p.status === "upcoming"
+                    ? "upcoming"
+                    : p.status === "live"
+                      ? "sweating 🔥"
+                      : p.status === "won"
+                        ? "won ✅"
+                        : "lost ❌"}
                 </span>
               </div>
             ))}

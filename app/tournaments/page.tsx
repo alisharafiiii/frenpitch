@@ -105,6 +105,9 @@ export default function TournamentsPage() {
   // tap a tour → expand with members + leaderboard
   const [expanded, setExpanded] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, TourDetail>>({});
+  const [settling, setSettling] = useState<string | null>(null);
+  const [settleResult, setSettleResult] = useState<string | null>(null);
+  const [settleExplorer, setSettleExplorer] = useState<string | null>(null);
 
   const toggleDetail = (code: string) => {
     if (expanded === code) {
@@ -280,6 +283,43 @@ export default function TournamentsPage() {
             >
               📤 invite more frens ({t.maxFrens - t.memberCount} spots left)
             </button>
+          )}
+          {t.status === "open" && t.isCreator && t.memberCount >= 2 && (
+            <button
+              className={ui.btnPrimary}
+              style={{ marginTop: 8 }}
+              disabled={settling === t.code}
+              onClick={async (e) => {
+                e.stopPropagation();
+                setSettling(t.code);
+                try {
+                  const res = await api<{ explorer: string; winners: { username: string; amountUsdc: number }[] }>(
+                    "/api/tournaments/settle",
+                    { method: "POST", body: { code: t.code } }
+                  );
+                  setSettleResult(
+                    `paid out: ${res.winners.map((w) => `${w.username} ${w.amountUsdc} usdc`).join(" · ")}`
+                  );
+                  setSettleExplorer(res.explorer);
+                  void load();
+                } catch (err) {
+                  setSettleResult(err instanceof Error ? err.message : "settle failed");
+                }
+                setSettling(null);
+              }}
+            >
+              {settling === t.code ? "paying out onchain…" : "🏁 settle & pay out the pool"}
+            </button>
+          )}
+          {settleResult && expanded === t.code && (
+            <div style={{ fontSize: 11, color: "var(--tma-success)", marginTop: 8, fontWeight: 700 }}>
+              {settleResult}{" "}
+              {settleExplorer && (
+                <a href={settleExplorer} target="_blank" rel="noreferrer" style={{ color: "var(--tma-primary)" }}>
+                  view tx ↗
+                </a>
+              )}
+            </div>
           )}
         </div>
       ))}

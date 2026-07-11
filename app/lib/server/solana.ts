@@ -146,6 +146,43 @@ export async function fundTournament(
   return { txSig, vault: vault.toBase58() };
 }
 
+/** pay out the tournament vault to ranked winners by their shares.
+ *  one real devnet transaction; returns the signature. */
+export async function payoutTournament(
+  code: string,
+  winners: { userId: string; amountUsdc: number }[]
+): Promise<string> {
+  const conn = connection();
+  const escrow = escrowAuthority();
+  const mint = usdcMint();
+  const stored = await redis().get<string>(`tour:${code}:vault`);
+  if (!stored) throw new Error("no vault for this tournament");
+  const vault = new PublicKey(stored);
+
+  const tx = new Transaction();
+  for (const w of winners) {
+    if (w.amountUsdc <= 0) continue;
+    const kp = await getOrCreateUserWallet(w.userId);
+    const ata = getAssociatedTokenAddressSync(mint, kp.publicKey);
+    tx.add(
+      createAssociatedTokenAccountIdempotentInstruction(
+        escrow.publicKey,
+        ata,
+        kp.publicKey,
+        mint
+      ),
+      createTransferInstruction(
+        vault,
+        ata,
+        escrow.publicKey,
+        BigInt(Math.round(w.amountUsdc * 1_000_000))
+      )
+    );
+  }
+  tx.feePayer = escrow.publicKey;
+  return sendAndConfirmTransaction(conn, tx, [escrow]);
+}
+
 /** current onchain pool balance for a tournament (usdc) */
 export async function vaultBalance(code: string): Promise<number | null> {
   const stored = await redis().get<string>(`tour:${code}:vault`);
