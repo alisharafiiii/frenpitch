@@ -5,10 +5,10 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
-  height: 60px;
+  height: 66px;
   display: flex;
   border-top: 1px solid var(--tma-border);
-  background: var(--tma-bg-card);
+  background: #0b0b12;
   padding-bottom: env(safe-area-inset-bottom);
   z-index: 50;
 }
@@ -32,9 +32,21 @@
   color: var(--tma-primary);
 }
 
-.ico {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 22px;
+.icoImg {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.itemActive .icoImg {
+  width: 38px;
+  height: 38px;
+}
+
+.activeDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--tma-primary);
+  margin-top: 1px;
 }
