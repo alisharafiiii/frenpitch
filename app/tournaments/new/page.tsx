@@ -128,7 +128,7 @@ export default function NewTournamentPage() {
 
   const share = () =>
     shareToContacts(
-      inviteLink ?? "https://t.me/frenpitch_bot",
+      inviteLink ?? "https://t.me/frenpitch_bot/app",
       `⚔️ ${name} — ${effectiveBuyIn} usdc buy-in.${pass ? " pass-protected 🔐" : ""} tap to join:`
     );
 
@@ -265,7 +265,7 @@ export default function NewTournamentPage() {
           className={styles.inviteRow}
           onClick={() =>
             shareToContacts(
-              inviteLink ?? "https://t.me/frenpitch_bot",
+              inviteLink ?? "https://t.me/frenpitch_bot/app",
               inviteLink
                 ? `⚔️ ${name} — ${effectiveBuyIn} usdc buy-in. tap to join:`
                 : "⚽ join me on frenpitch — live picks, fren tournaments, football quizzes 🫡"

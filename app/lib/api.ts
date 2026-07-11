@@ -29,12 +29,35 @@ export async function api<T>(
   return (await res.json()) as T;
 }
 
-/** tg start param (tournament invite code) if the app was opened via
- *  t.me/frenpitch_bot?startapp=CODE */
+/** tg start param (invite code) — checks every place telegram may put it:
+ *  initDataUnsafe.start_param, the url hash (tgWebAppStartParam), and
+ *  plain query params (browser testing). */
 export function startParam(): string | null {
   if (typeof window === "undefined") return null;
   const w = window as unknown as {
     Telegram?: { WebApp?: { initDataUnsafe?: { start_param?: string } } };
   };
-  return w.Telegram?.WebApp?.initDataUnsafe?.start_param ?? null;
+  const fromBridge = w.Telegram?.WebApp?.initDataUnsafe?.start_param;
+  if (fromBridge) return fromBridge;
+  const hash = new URLSearchParams(window.location.hash.slice(1));
+  const fromHash = hash.get("tgWebAppStartParam");
+  if (fromHash) return fromHash;
+  const qs = new URLSearchParams(window.location.search);
+  return qs.get("tgWebAppStartParam") ?? qs.get("startapp") ?? null;
+}
+
+/** the bridge can inject slightly after first render — poll briefly
+ *  so an invite code is never missed (minted mind pattern). */
+export function waitForStartParam(cb: (code: string) => void, tries = 10): void {
+  let attempt = 0;
+  const tick = () => {
+    const code = startParam();
+    if (code) {
+      cb(code);
+      return;
+    }
+    attempt++;
+    if (attempt < tries) setTimeout(tick, 400);
+  };
+  tick();
 }

@@ -28,24 +28,83 @@ const SPLIT_LABEL: Record<string, string> = {
 export default function TournamentsPage() {
   const [tours, setTours] = useState<MyTournament[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [joinPass, setJoinPass] = useState("");
+  const [needPass, setNeedPass] = useState(false);
+  const [joinMsg, setJoinMsg] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () =>
     api<{ tournaments: MyTournament[] }>("/api/tournaments/mine")
       .then(({ tournaments }) => {
         setTours(tournaments);
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
+
+  useEffect(() => {
+    void load();
   }, []);
+
+  const join = async () => {
+    const code = joinCode.trim().toLowerCase();
+    if (!code) return;
+    try {
+      await api("/api/tournaments", {
+        method: "PUT",
+        body: { code, pass: joinPass || undefined },
+      });
+      // fund the buy-in from the invisible devnet wallet
+      api("/api/tournaments/fund", { method: "POST", body: { code } }).catch(() => {});
+      setJoinMsg("you're in ⚔️");
+      setNeedPass(false);
+      void load();
+    } catch (err) {
+      if (err instanceof Error && err.message === "pass_required") {
+        setNeedPass(true);
+        setJoinMsg("this tour needs a pass 🔐");
+      } else {
+        setJoinMsg("code not found or tour is full");
+      }
+    }
+  };
 
   const share = (t: MyTournament) =>
     shareToContacts(
-      `https://t.me/frenpitch_bot?startapp=${t.code}`,
+      `https://t.me/frenpitch_bot/app?startapp=${t.code}`,
       `⚔️ ${t.name} — ${t.buyInUsdc} usdc buy-in.${t.hasPass ? " pass-protected 🔐" : ""} tap to join:`
     );
 
   return (
     <>
+      <div className={ui.sectionLabel}>⚔️ join with code</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          className={ui.input}
+          placeholder="paste code from your fren"
+          value={joinCode}
+          onChange={(e) => setJoinCode(e.target.value)}
+        />
+        <button
+          className={ui.btnPrimary}
+          style={{ width: "auto", whiteSpace: "nowrap" }}
+          onClick={join}
+        >
+          join
+        </button>
+      </div>
+      {needPass && (
+        <input
+          className={ui.input}
+          style={{ marginTop: 8 }}
+          placeholder="🔐 passcode"
+          value={joinPass}
+          onChange={(e) => setJoinPass(e.target.value)}
+        />
+      )}
+      {joinMsg && (
+        <div style={{ fontSize: 12, color: "var(--tma-fg-dim)", marginTop: 8 }}>{joinMsg}</div>
+      )}
+
       <div className={ui.sectionLabel}>🏆 your tournaments</div>
 
       {loaded && tours.length === 0 && (
@@ -70,6 +129,9 @@ export default function TournamentsPage() {
             </b>{" "}
             live pool · {t.memberCount}/{t.maxFrens} frens joined · {t.buyInUsdc} usdc
             buy-in · {SPLIT_LABEL[t.split] ?? t.split}
+            <div style={{ marginTop: 4, userSelect: "all" }}>
+              code: <b className={ui.num}>{t.code}</b> — frens can join with it directly
+            </div>
           </div>
           <div
             style={{

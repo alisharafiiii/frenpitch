@@ -200,7 +200,7 @@ export default function StadiumPage() {
           className={ui.btnGhost}
           onClick={() =>
             shareToContacts(
-              "https://t.me/frenpitch_bot",
+              "https://t.me/frenpitch_bot/app",
               "⚽ join me in the stadium — live picks, fren tournaments, football quizzes. see you on the pitch 🫡"
             )
           }

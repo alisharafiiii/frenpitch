@@ -174,7 +174,7 @@ function Lobby({
 
   const share = () =>
     shareToContacts(
-      inviteLink ?? `https://t.me/frenpitch_bot?startapp=${code}`,
+      inviteLink ?? `https://t.me/frenpitch_bot/app?startapp=${code}`,
       "🧠 quiz battle — think you know football? tap to join my lobby:"
     );
 

@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   await createTournament(t);
 
   // tg deep link — opens the mini app with the code as start param
-  const inviteLink = `https://t.me/${BOT}?startapp=${t.code}`;
+  const inviteLink = `https://t.me/${BOT}/app?startapp=${t.code}`;
   return NextResponse.json({ tournament: t, inviteLink });
 }
 

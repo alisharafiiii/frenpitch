@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     lobby,
-    inviteLink: `https://t.me/frenpitch_bot?startapp=${lobby.code}`,
+    inviteLink: `https://t.me/frenpitch_bot/app?startapp=${lobby.code}`,
   });
 }
 

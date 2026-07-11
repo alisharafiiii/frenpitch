@@ -6,7 +6,7 @@ import { mockMatches } from "@/app/data/mock-matches";
 import { bus } from "@/app/lib/events";
 import { TxLineClient } from "@/app/lib/txline";
 import { getTgUser } from "@/app/lib/telegram";
-import { api, startParam } from "@/app/lib/api";
+import { api, waitForStartParam } from "@/app/lib/api";
 
 interface ServerPick {
   id: string;
@@ -61,13 +61,14 @@ export default function HomePage() {
         /* offline dev — keep local defaults */
       });
 
-    const code = startParam();
-    if (code?.startsWith("q")) {
-      // quiz lobby invite → straight to the quiz tab
-      window.location.href = `/quiz?code=${code}`;
-      return;
-    }
-    if (code) tryJoin(code);
+    waitForStartParam((code) => {
+      if (code.startsWith("q")) {
+        // quiz lobby invite → straight to the quiz tab
+        window.location.href = `/quiz?code=${code}`;
+        return;
+      }
+      tryJoin(code);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
