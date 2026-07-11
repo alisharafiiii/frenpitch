@@ -160,6 +160,17 @@ export default function StadiumPage() {
       </div>
 
       <div className={`${styles.stadium} ${goalFlash ? styles.goalFlash : ""}`}>
+        {/* rendered stadium art (public/stadium-bg.png) — svg below stays
+            as the instant-loading fallback if the image is missing */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/stadium-bg.png"
+          alt=""
+          className={styles.bgArt}
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
+        />
         {/* night stadium scene */}
         <svg
           className={styles.pitchSvg}
