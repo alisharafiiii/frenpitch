@@ -90,7 +90,7 @@ export function OddsCard({
   const hasOdds = match.odds.home > 0;
 
   return (
-    <div className={styles.card} style={{ animationDelay: `${index * 0.07}s` }}>
+    <div className={styles.card} style={{ animationDelay: `${index * 0.055}s` }}>
       {/* teams */}
       <div className={styles.teams}>
         <div className={styles.team}>

@@ -364,9 +364,14 @@ export default function HomePage() {
         </span>
         <span className={styles.sectionSub}>biggest moves last 10 min</span>
       </div>
-      {matches.length === 0 && (
-        <div className={ui.emptyState}>loading fixtures from txline…</div>
-      )}
+      {matches.length === 0 &&
+        [0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className={ui.skeleton}
+            style={{ height: 84, borderRadius: 16, marginBottom: 10 }}
+          />
+        ))}
       {(showAll ? matches : matches.slice(0, 5)).map((m, i) => (
         <OddsCard key={m.id} match={m} index={i} onPick={(match, outcome) => setSlip({ match, outcome })} />
       ))}

@@ -8,7 +8,8 @@
   padding: 12px 12px;
   margin-bottom: 10px;
   will-change: transform, opacity;
-  animation: slideUp 0.4s ease both;
+  /* curtain wave: falls in from the top, overlapping stagger */
+  animation: curtain 0.42s cubic-bezier(0.22, 0.9, 0.35, 1) both;
 }
 
 /* ---- teams ---- */
