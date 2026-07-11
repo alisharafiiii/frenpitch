@@ -166,11 +166,37 @@ export async function joinTournament(
   return "ok";
 }
 
+/** backfill: find tournaments created/joined before the per-user index
+ *  existed by scanning tour:* keys and checking membership. self-heals
+ *  the user's tours set so the scan only ever runs once per user. */
+async function backfillUserTours(userId: string): Promise<string[]> {
+  const found: string[] = [];
+  let cursor = "0";
+  let guard = 0;
+  do {
+    const [next, keys] = await redis().scan(cursor, { match: "tour:*:members", count: 100 });
+    cursor = String(next);
+    for (const key of keys) {
+      const code = String(key).split(":")[1];
+      const isMember = await redis().sismember(String(key), userId);
+      if (isMember) {
+        found.push(code);
+        await redis().sadd(`user:${userId}:tours`, code);
+      }
+    }
+    guard++;
+  } while (cursor !== "0" && guard < 20);
+  return found;
+}
+
 /** all tournaments a user created or joined, with live member counts */
 export async function getUserTournaments(
   userId: string
 ): Promise<(TournamentRecord & { memberCount: number })[]> {
-  const codes = await redis().smembers(`user:${userId}:tours`);
+  let codes = await redis().smembers(`user:${userId}:tours`);
+  if (codes.length === 0) {
+    codes = await backfillUserTours(userId);
+  }
   const tours = await Promise.all(
     codes.map(async (code) => {
       const t = await getTournament(String(code));
