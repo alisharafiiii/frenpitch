@@ -98,9 +98,16 @@ export async function getUser(id: string): Promise<UserRecord | null> {
   if (!u || !u.id) return null;
   return {
     ...(u as unknown as UserRecord),
+    // upstash auto-deserializes: numeric strings come back as numbers.
+    // coerce explicitly so string ops (iteration, comparison) never break.
+    id: String(u.id),
+    username: String(u.username),
+    name: String(u.name),
     bankroll: Number(u.bankroll),
     pnl: Number(u.pnl),
     streak: Number(u.streak),
+    lastSeen: Number(u.lastSeen),
+    createdAt: Number(u.createdAt),
   };
 }
 
@@ -122,6 +129,9 @@ export async function getPick(id: string): Promise<PickRecord | null> {
   if (!p || !p.id) return null;
   return {
     ...(p as unknown as PickRecord),
+    id: String(p.id),
+    userId: String(p.userId),
+    matchId: String(p.matchId), // numeric fixture ids must stay strings
     lockedOdds: Number(p.lockedOdds),
     stake: Number(p.stake),
     createdAt: Number(p.createdAt),
@@ -145,6 +155,9 @@ export async function getTournament(code: string): Promise<TournamentRecord | nu
   if (!t || !t.code) return null;
   return {
     ...(t as unknown as TournamentRecord),
+    code: String(t.code),
+    creatorId: String(t.creatorId),
+    ...(t.pass !== undefined && t.pass !== null ? { pass: String(t.pass) } : {}),
     buyInUsdc: Number(t.buyInUsdc),
     maxFrens: Number(t.maxFrens),
     createdAt: Number(t.createdAt),

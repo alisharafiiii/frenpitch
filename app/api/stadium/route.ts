@@ -11,9 +11,11 @@ function posFor(id: string): { x: number; y: number } {
   let h = 0;
   for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const x = 22 + (h % 57); // 22..78 %
-  const y = 16 + ((h >> 8) % 66); // 16..81 %
+  const y = 16 + ((h >>> 8) % 66); // 16..81 % (unsigned shift — no negatives)
   return { x, y };
 }
+
+export const revalidate = 0;
 
 export async function GET() {
   try {
@@ -26,7 +28,7 @@ export async function GET() {
 }
 
 async function buildStadium() {
-  const users = await getAllUsers();
+  const users = (await getAllUsers()).filter((u) => u.id !== "demo");
   const frens = await Promise.all(
     users.map(async (u) => {
       const picks = await getUserPicks(u.id, 3);
