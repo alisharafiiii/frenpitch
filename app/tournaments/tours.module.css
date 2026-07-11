@@ -1,0 +1,330 @@
+/* tours tab — banner hero + themed tournament cards */
+
+.banner {
+  position: relative;
+  margin: -16px -16px 0;
+  height: 215px;
+  overflow: hidden;
+}
+
+.bannerImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+.banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5, 5, 9, 0.25) 0%, transparent 35%, rgba(5, 5, 9, 0.92) 96%);
+}
+
+.bannerText {
+  position: absolute;
+  left: 16px;
+  bottom: 10px;
+  z-index: 1;
+}
+
+.bannerKicker {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #7ee04a;
+}
+
+.bannerTitle {
+  font-size: 32px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  color: #fff;
+  line-height: 1.05;
+}
+
+/* join row */
+
+.joinRow {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+
+.joinInputWrap {
+  position: relative;
+  flex: 1;
+}
+
+.joinInput {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--tma-border);
+  border-radius: 14px;
+  padding: 15px 44px 15px 14px;
+  color: var(--tma-fg);
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 50px;
+}
+
+.joinInput::placeholder {
+  color: var(--tma-fg-muted);
+}
+
+.joinQr {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--tma-primary);
+  display: flex;
+}
+
+.joinBtn {
+  background: var(--tma-primary);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 0 22px;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  min-height: 50px;
+}
+
+/* section header */
+
+.sectionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 12px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--tma-fg);
+}
+
+.filterBtn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #7ee04a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* tournament card */
+
+.card {
+  position: relative;
+  background: #0d0d15;
+  border: 1px solid var(--tma-border);
+  border-radius: 18px;
+  padding: 14px;
+  margin-bottom: 14px;
+  will-change: transform, opacity;
+  animation: slideUp 0.4s ease both;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.openPill {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #7ee04a;
+  border: 1px solid rgba(126, 224, 74, 0.45);
+  border-radius: var(--tma-radius-pill);
+  padding: 4px 11px;
+}
+
+.settledPill {
+  composes: openPill;
+  color: var(--tma-fg-dim);
+  border-color: var(--tma-border);
+}
+
+.arrowBtn {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid var(--tma-primary);
+  background: transparent;
+  color: var(--tma-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s;
+}
+
+.arrowBtnOpen {
+  transform: rotate(90deg);
+}
+
+.cardBody {
+  display: flex;
+  gap: 12px;
+}
+
+.cup {
+  width: 92px;
+  height: 92px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 55%, var(--cup-glow) 0%, transparent 72%),
+    #08080d;
+}
+
+.cupImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cardMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.stat {
+  min-width: 0;
+}
+
+.statValue {
+  font-size: 11.5px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.statLabel {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: var(--tma-fg-muted);
+  margin-top: 2px;
+}
+
+.codeLine {
+  font-size: 12px;
+  color: var(--tma-fg-dim);
+  margin-bottom: 8px;
+}
+
+.codeValue {
+  font-weight: 800;
+  user-select: all;
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 4px;
+  background: #22c55e;
+  transition: width 0.5s ease;
+}
+
+.filled {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--tma-primary);
+  text-align: right;
+  line-height: 1.1;
+}
+
+.filled small {
+  display: block;
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  color: var(--tma-fg-muted);
+}
+
+.inviteBtn {
+  width: 100%;
+  background: transparent;
+  border: 1.5px solid var(--theme);
+  color: var(--theme);
+  border-radius: 12px;
+  padding: 11px;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.createBtn {
+  width: 100%;
+  background: var(--tma-primary);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-decoration: none;
+  margin-top: 4px;
+}
