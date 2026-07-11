@@ -146,11 +146,54 @@ export default function StadiumPage() {
       </div>
 
       <div className={`${styles.stadium} ${goalFlash ? styles.goalFlash : ""}`}>
-        <div className={styles.stands} />
-        <div className={styles.pitch}>
-          <div className={styles.boxTop} />
-          <div className={styles.boxBot} />
-        </div>
+        {/* crisp svg pitch */}
+        <svg
+          className={styles.pitchSvg}
+          viewBox="0 0 100 150"
+          preserveAspectRatio="none"
+          aria-hidden
+        >
+          <defs>
+            <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <stop
+                  key={i}
+                  offset={`${i * 10}%`}
+                  stopColor={i % 2 === 0 ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.06)"}
+                />
+              ))}
+            </linearGradient>
+          </defs>
+          {/* mowing stripes */}
+          <rect x="10" y="8" width="80" height="134" fill="url(#grass)" rx="1.5" />
+          <g fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="0.7">
+            {/* touchlines */}
+            <rect x="10" y="8" width="80" height="134" rx="1.5" />
+            {/* halfway + center */}
+            <line x1="10" y1="75" x2="90" y2="75" />
+            <circle cx="50" cy="75" r="11" />
+            {/* penalty areas */}
+            <rect x="28" y="8" width="44" height="18" />
+            <rect x="28" y="124" width="44" height="18" />
+            {/* goal areas */}
+            <rect x="39" y="8" width="22" height="7" />
+            <rect x="39" y="135" width="22" height="7" />
+            {/* penalty arcs */}
+            <path d="M 41 26 A 10 10 0 0 0 59 26" />
+            <path d="M 41 124 A 10 10 0 0 1 59 124" />
+            {/* corner arcs */}
+            <path d="M 10 11 A 3 3 0 0 0 13 8" />
+            <path d="M 87 8 A 3 3 0 0 0 90 11" />
+            <path d="M 13 142 A 3 3 0 0 0 10 139" />
+            <path d="M 90 139 A 3 3 0 0 0 87 142" />
+          </g>
+          {/* spots */}
+          <g fill="rgba(255,255,255,0.35)">
+            <circle cx="50" cy="21" r="0.8" />
+            <circle cx="50" cy="129" r="0.8" />
+            <circle cx="50" cy="75" r="0.9" />
+          </g>
+        </svg>
 
         {loaded && frens.length === 0 && (
           <div className={styles.emptyPitch}>
@@ -161,39 +204,33 @@ export default function StadiumPage() {
         )}
 
         {frens.map((f) => {
-          const state = f.livePick
-            ? f.pnl >= 0
-              ? styles.frenUp
-              : styles.frenDown
-            : styles.frenIdle;
+          const state = f.livePick ? (f.pnl >= 0 ? styles.frenUp : styles.frenDown) : "";
           const sel = selected?.id === f.id ? styles.frenSelected : "";
+          const away = !f.online ? styles.away : "";
           return (
             <button
               key={f.id}
-              className={`${styles.fren} ${state} ${sel}`}
+              className={`${styles.fren} ${state} ${sel} ${away}`}
               style={{ left: `${f.x}%`, top: `${f.y}%` }}
               onClick={() => setSelected(f)}
             >
-              <Avatar
-                photoUrl={f.photoUrl}
-                initial={f.initial}
-                gradient={f.gradient}
-                size={40}
-                fontSize={14}
-                className={styles.frenAvatar}
-              />
-              <span
-                className={styles.tag}
-                style={!f.livePick && f.online ? { color: "var(--tma-success)" } : undefined}
-              >
-                {f.livePick
-                  ? f.pnl >= 0
-                    ? `+${f.pnl}`
-                    : f.pnl
-                  : f.online
-                    ? "🟢 no pick yet"
-                    : "away"}
+              <span className={styles.avatarWrap}>
+                <Avatar
+                  photoUrl={f.photoUrl}
+                  initial={f.initial}
+                  gradient={f.gradient}
+                  size={42}
+                  fontSize={15}
+                  className={styles.frenAvatar}
+                />
+                <span className={styles.statusDot} data-online={f.online} />
               </span>
+              <span className={styles.handleLabel}>{f.handle}</span>
+              {f.livePick && (
+                <span className={styles.pnlChip}>
+                  {f.pnl >= 0 ? `+${f.pnl}` : f.pnl}
+                </span>
+              )}
             </button>
           );
         })}
