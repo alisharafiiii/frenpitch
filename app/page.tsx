@@ -149,6 +149,7 @@ export default function HomePage() {
       handle: string;
       initial: string;
       photoUrl?: string;
+      hasPhoto?: boolean;
       online: boolean;
       livePick: unknown;
     }[];
@@ -158,6 +159,9 @@ export default function HomePage() {
     () =>
       (stadiumData?.frens ?? [])
         .filter((f) => f.online && f.id !== String(user.id)) // frens only, not you
+        .sort(
+          (a, b) => Number(b.hasPhoto ?? false) - Number(a.hasPhoto ?? false)
+        ) // real pfps front of the stack
         .map((f) => ({
           id: f.id,
           handle: f.handle,

@@ -12,8 +12,11 @@ export interface Match {
   id: string;
   home: string; // team code e.g. "BRA"
   away: string;
-  homeFlag: string; // emoji flag for MVP
+  homeFlag: string; // emoji fallback
   awayFlag: string;
+  /** iso code for circle-flag svg (e.g. "fr", "gb-eng") */
+  homeIso?: string;
+  awayIso?: string;
   kickoffUtc: string; // ISO
   status: "upcoming" | "live" | "ht" | "ft";
   minute: number;

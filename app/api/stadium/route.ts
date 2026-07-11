@@ -47,6 +47,7 @@ async function buildStadium() {
         handle: u.username,
         initial: (u.name[0] ?? "?").toUpperCase(),
         photoUrl: `/api/avatar/${u.id}`,
+        hasPhoto: Boolean(u.photoUrl), // tg delivered a real profile photo
         pnl: u.pnl,
         streak: u.streak,
         online: Date.now() - u.lastSeen < 10 * 60 * 1000,

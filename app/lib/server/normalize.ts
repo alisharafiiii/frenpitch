@@ -17,25 +17,43 @@ function pick<T>(obj: Raw, ...keys: string[]): T | undefined {
   return undefined;
 }
 
-// small flag map for world cup teams — fallback ⚽
-const FLAGS: Record<string, string> = {
-  brazil: "🇧🇷", france: "🇫🇷", argentina: "🇦🇷", mexico: "🇲🇽",
-  england: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", ghana: "🇬🇭", germany: "🇩🇪", spain: "🇪🇸",
-  portugal: "🇵🇹", netherlands: "🇳🇱", italy: "🇮🇹", belgium: "🇧🇪",
-  croatia: "🇭🇷", morocco: "🇲🇦", japan: "🇯🇵", "south korea": "🇰🇷",
-  usa: "🇺🇸", "united states": "🇺🇸", canada: "🇨🇦", uruguay: "🇺🇾",
-  colombia: "🇨🇴", senegal: "🇸🇳", nigeria: "🇳🇬", australia: "🇦🇺",
-  switzerland: "🇨🇭", poland: "🇵🇱", denmark: "🇩🇰", ecuador: "🇪🇨",
-  qatar: "🇶🇦", "saudi arabia": "🇸🇦", iran: "🇮🇷", wales: "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
-  scotland: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", cameroon: "🇨🇲", serbia: "🇷🇸", tunisia: "🇹🇳",
-  "costa rica": "🇨🇷", norway: "🇳🇴", sweden: "🇸🇪", austria: "🇦🇹",
-  ukraine: "🇺🇦", turkey: "🇹🇷", egypt: "🇪🇬", "ivory coast": "🇨🇮",
-  algeria: "🇩🇿", paraguay: "🇵🇾", chile: "🇨🇱", peru: "🇵🇪", panama: "🇵🇦",
-  jordan: "🇯🇴", uzbekistan: "🇺🇿", "new zealand": "🇳🇿",
+// team → { emoji fallback, iso code for circle-flag svgs }
+const COUNTRIES: Record<string, { e: string; iso: string }> = {
+  brazil: { e: "🇧🇷", iso: "br" }, france: { e: "🇫🇷", iso: "fr" },
+  argentina: { e: "🇦🇷", iso: "ar" }, mexico: { e: "🇲🇽", iso: "mx" },
+  england: { e: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", iso: "gb-eng" }, ghana: { e: "🇬🇭", iso: "gh" },
+  germany: { e: "🇩🇪", iso: "de" }, spain: { e: "🇪🇸", iso: "es" },
+  portugal: { e: "🇵🇹", iso: "pt" }, netherlands: { e: "🇳🇱", iso: "nl" },
+  italy: { e: "🇮🇹", iso: "it" }, belgium: { e: "🇧🇪", iso: "be" },
+  croatia: { e: "🇭🇷", iso: "hr" }, morocco: { e: "🇲🇦", iso: "ma" },
+  japan: { e: "🇯🇵", iso: "jp" }, "south korea": { e: "🇰🇷", iso: "kr" },
+  usa: { e: "🇺🇸", iso: "us" }, "united states": { e: "🇺🇸", iso: "us" },
+  canada: { e: "🇨🇦", iso: "ca" }, uruguay: { e: "🇺🇾", iso: "uy" },
+  colombia: { e: "🇨🇴", iso: "co" }, senegal: { e: "🇸🇳", iso: "sn" },
+  nigeria: { e: "🇳🇬", iso: "ng" }, australia: { e: "🇦🇺", iso: "au" },
+  switzerland: { e: "🇨🇭", iso: "ch" }, poland: { e: "🇵🇱", iso: "pl" },
+  denmark: { e: "🇩🇰", iso: "dk" }, ecuador: { e: "🇪🇨", iso: "ec" },
+  qatar: { e: "🇶🇦", iso: "qa" }, "saudi arabia": { e: "🇸🇦", iso: "sa" },
+  iran: { e: "🇮🇷", iso: "ir" }, wales: { e: "🏴󠁧󠁢󠁷󠁬󠁳󠁿", iso: "gb-wls" },
+  scotland: { e: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", iso: "gb-sct" }, cameroon: { e: "🇨🇲", iso: "cm" },
+  serbia: { e: "🇷🇸", iso: "rs" }, tunisia: { e: "🇹🇳", iso: "tn" },
+  "costa rica": { e: "🇨🇷", iso: "cr" }, norway: { e: "🇳🇴", iso: "no" },
+  sweden: { e: "🇸🇪", iso: "se" }, austria: { e: "🇦🇹", iso: "at" },
+  ukraine: { e: "🇺🇦", iso: "ua" }, turkey: { e: "🇹🇷", iso: "tr" },
+  egypt: { e: "🇪🇬", iso: "eg" }, "ivory coast": { e: "🇨🇮", iso: "ci" },
+  algeria: { e: "🇩🇿", iso: "dz" }, paraguay: { e: "🇵🇾", iso: "py" },
+  chile: { e: "🇨🇱", iso: "cl" }, peru: { e: "🇵🇪", iso: "pe" },
+  panama: { e: "🇵🇦", iso: "pa" }, jordan: { e: "🇯🇴", iso: "jo" },
+  uzbekistan: { e: "🇺🇿", iso: "uz" }, "new zealand": { e: "🇳🇿", iso: "nz" },
+  vietnam: { e: "🇻🇳", iso: "vn" }, myanmar: { e: "🇲🇲", iso: "mm" },
 };
 
 export function flagFor(team: string): string {
-  return FLAGS[team.toLowerCase().trim()] ?? "⚽";
+  return COUNTRIES[team.toLowerCase().trim()]?.e ?? "⚽";
+}
+
+export function isoFor(team: string): string | undefined {
+  return COUNTRIES[team.toLowerCase().trim()]?.iso;
 }
 
 /** fixtures snapshot entry → Match (documented shape) */
@@ -57,6 +75,8 @@ export function normalizeFixture(raw: Raw): Match | null {
     away: away.slice(0, 3).toUpperCase(),
     homeFlag: flagFor(home),
     awayFlag: flagFor(away),
+    homeIso: isoFor(home),
+    awayIso: isoFor(away),
     kickoffUtc: kickoff,
     status: "upcoming",
     minute: 0,

@@ -19,6 +19,59 @@ function ringFor(code: string): string {
   return RING_COLORS[h % RING_COLORS.length];
 }
 
+/** full-circle flag (svg image), emoji fallback if no iso / load error */
+function FlagBadge({ iso, emoji, ring }: { iso?: string; emoji: string; ring: string }) {
+  return (
+    <span className={styles.badge} style={{ borderColor: ring }}>
+      {iso ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`https://hatscripts.github.io/circle-flags/flags/${iso}.svg`}
+          alt=""
+          width={30}
+          height={30}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          onError={(e) => {
+            const img = e.currentTarget as HTMLImageElement;
+            img.style.display = "none";
+            if (img.parentElement) img.parentElement.textContent = emoji;
+          }}
+        />
+      ) : (
+        emoji
+      )}
+    </span>
+  );
+}
+
+/* ---- svg icons (no emoji) ---- */
+
+function IconClock() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--tma-fg-dim)" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
+function IconTrend() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--tma-success)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 17l6-6 4 4 8-8" />
+      <path d="M15 7h6v6" />
+    </svg>
+  );
+}
+
+function IconBolt() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="var(--tma-warning)" stroke="none">
+      <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
+    </svg>
+  );
+}
+
 export function OddsCard({
   match,
   onPick,
@@ -41,9 +94,7 @@ export function OddsCard({
       {/* teams */}
       <div className={styles.teams}>
         <div className={styles.team}>
-          <span className={styles.badge} style={{ borderColor: ringFor(match.home) }}>
-            {match.homeFlag}
-          </span>
+          <FlagBadge iso={match.homeIso} emoji={match.homeFlag} ring={ringFor(match.home)} />
           <span className={styles.code}>{match.home}</span>
         </div>
         <span className={`${styles.vs} ${ui.num}`}>
@@ -52,9 +103,7 @@ export function OddsCard({
             : "vs"}
         </span>
         <div className={styles.team}>
-          <span className={styles.badge} style={{ borderColor: ringFor(match.away) }}>
-            {match.awayFlag}
-          </span>
+          <FlagBadge iso={match.awayIso} emoji={match.awayFlag} ring={ringFor(match.away)} />
           <span className={styles.code}>{match.away}</span>
         </div>
       </div>
@@ -95,7 +144,9 @@ export function OddsCard({
               <span className={ui.liveDot} />
               {match.status === "ht" ? "HT" : `${match.minute}'`}
             </span>
-            <span className={styles.railIcon}>⚡</span>
+            <span className={styles.railIcon}>
+              <IconBolt />
+            </span>
           </>
         ) : match.status === "ft" ? (
           <span className={styles.timeChip}>FT</span>
@@ -104,7 +155,7 @@ export function OddsCard({
             <span className={styles.timeChip}>
               {new Date(match.kickoffUtc).toISOString().slice(11, 16)} UTC
             </span>
-            <span className={styles.railIcon}>{hasOdds ? "📈" : "⏱"}</span>
+            <span className={styles.railIcon}>{hasOdds ? <IconTrend /> : <IconClock />}</span>
           </>
         )}
       </div>

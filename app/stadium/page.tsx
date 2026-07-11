@@ -43,6 +43,7 @@ interface ServerFren {
   streak: number;
   online: boolean;
   lastSeen: number;
+  hasPhoto?: boolean;
   x: number;
   y: number;
   livePick: ServerFrenPick | null;
@@ -120,8 +121,12 @@ export default function StadiumPage() {
   });
   useEffect(() => {
     if (stadiumData) {
-      // most recently active first — they take the pitch, rest hit the bench
-      const sorted = [...stadiumData.frens].sort((a, b) => b.lastSeen - a.lastSeen);
+      // real pfps take the pitch first, then most recently active
+      const sorted = [...stadiumData.frens].sort(
+        (a, b) =>
+          Number(b.hasPhoto ?? false) - Number(a.hasPhoto ?? false) ||
+          b.lastSeen - a.lastSeen
+      );
       setFrens(sorted.map(toFren));
       setLoaded(true);
     } else if (typeof window !== "undefined" && window.location.hostname === "localhost") {
