@@ -120,11 +120,9 @@ export default function StadiumPage() {
   });
   useEffect(() => {
     if (stadiumData) {
-      // most recently active first — they take the pitch, rest hit the stands
+      // most recently active first — they take the pitch, rest hit the bench
       const sorted = [...stadiumData.frens].sort((a, b) => b.lastSeen - a.lastSeen);
-      const mapped = sorted.map(toFren);
-      setFrens(mapped);
-      setSelected((cur) => cur ?? mapped[0] ?? null);
+      setFrens(sorted.map(toFren));
       setLoaded(true);
     } else if (typeof window !== "undefined" && window.location.hostname === "localhost") {
       setFrens(mockFrens);
@@ -168,6 +166,8 @@ export default function StadiumPage() {
   const liveCount = frens.filter((f) => f.livePick).length;
   const meId = String(me.id);
   const myFren = frens.find((f) => f.id === meId);
+  // you live in the corner card — the pitch is for your frens
+  const others = frens.filter((f) => f.id !== meId);
 
   return (
     <>
@@ -329,7 +329,7 @@ export default function StadiumPage() {
           </div>
         </div>
 
-        {loaded && frens.length === 0 && (
+        {loaded && others.length === 0 && (
           <div className={styles.emptyPitch}>
             the pitch is empty 👀
             <br />
@@ -338,7 +338,7 @@ export default function StadiumPage() {
         )}
 
         {/* starting XI in formation — most recently active play */}
-        {frens.slice(0, MAX_ON_PITCH).map((f, i) => {
+        {others.slice(0, MAX_ON_PITCH).map((f, i) => {
           const slot = FORMATION[i];
           const state = f.livePick
             ? f.pnl >= 0
@@ -381,7 +381,7 @@ export default function StadiumPage() {
         })}
 
         {/* the rest wait on the touchlines — right by the pitch */}
-        {frens.slice(MAX_ON_PITCH, MAX_ON_PITCH + SIDELINE_SEATS.length).map((f, i) => {
+        {others.slice(MAX_ON_PITCH, MAX_ON_PITCH + SIDELINE_SEATS.length).map((f, i) => {
           const seat = SIDELINE_SEATS[i];
           const sel = selected?.id === f.id ? styles.frenSelected : "";
           return (
@@ -411,9 +411,9 @@ export default function StadiumPage() {
         })}
 
         {/* overflow count if even the touchlines are full */}
-        {frens.length > MAX_ON_PITCH + SIDELINE_SEATS.length && (
+        {others.length > MAX_ON_PITCH + SIDELINE_SEATS.length && (
           <span className={styles.overflowBadge}>
-            +{frens.length - MAX_ON_PITCH - SIDELINE_SEATS.length} more warming up
+            +{others.length - MAX_ON_PITCH - SIDELINE_SEATS.length} more warming up
           </span>
         )}
 
