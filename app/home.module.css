@@ -24,17 +24,18 @@
 
 .heroArtImg {
   position: absolute;
-  right: -30px;
+  right: -22px;
   top: 50%;
   transform: translateY(-50%);
-  width: 240px;
-  height: 100%;
+  width: 195px;
+  height: 96%;
   object-fit: contain;
   pointer-events: none;
   z-index: 1;
+  filter: brightness(0.88); /* subtle darken so copy stays readable */
   /* fade into the card on the left edge */
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 26%);
-  mask-image: linear-gradient(to right, transparent 0%, black 26%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 30%);
+  mask-image: linear-gradient(to right, transparent 0%, black 30%);
 }
 
 .heroContent {

@@ -42,11 +42,33 @@ interface ServerFren {
   pnl: number;
   streak: number;
   online: boolean;
+  lastSeen: number;
   x: number;
   y: number;
   livePick: ServerFrenPick | null;
   lastPick: ServerFrenPick | null;
 }
+
+/** max frens on the pitch — a full starting XI. everyone else sits in
+ *  the stands (most recently active play, the rest watch) */
+const MAX_ON_PITCH = 11;
+
+/** stand seats around the bowl: x/y in %, s = perspective scale */
+const STAND_SEATS: { x: number; y: number; s: number }[] = [
+  { x: 20, y: 12, s: 0.5 },
+  { x: 36, y: 8, s: 0.46 },
+  { x: 50, y: 7, s: 0.46 },
+  { x: 64, y: 8, s: 0.46 },
+  { x: 80, y: 12, s: 0.5 },
+  { x: 9, y: 26, s: 0.55 },
+  { x: 91, y: 26, s: 0.55 },
+  { x: 6, y: 42, s: 0.6 },
+  { x: 94, y: 42, s: 0.6 },
+  { x: 6, y: 58, s: 0.65 },
+  { x: 94, y: 58, s: 0.65 },
+  { x: 9, y: 72, s: 0.7 },
+  { x: 91, y: 72, s: 0.7 },
+];
 
 function toFren(f: ServerFren, i: number): Fren {
   const mapPick = (p: ServerFrenPick | null): Fren["livePick"] =>
@@ -87,7 +109,9 @@ export default function StadiumPage() {
   });
   useEffect(() => {
     if (stadiumData) {
-      const mapped = stadiumData.frens.map(toFren);
+      // most recently active first — they take the pitch, rest hit the stands
+      const sorted = [...stadiumData.frens].sort((a, b) => b.lastSeen - a.lastSeen);
+      const mapped = sorted.map(toFren);
       setFrens(mapped);
       setSelected((cur) => cur ?? mapped[0] ?? null);
       setLoaded(true);
@@ -312,7 +336,8 @@ export default function StadiumPage() {
           </div>
         )}
 
-        {frens.map((f) => {
+        {/* starting XI on the pitch — perspective scaled */}
+        {frens.slice(0, MAX_ON_PITCH).map((f) => {
           const state = f.livePick
             ? f.pnl >= 0
               ? styles.frenUp
@@ -323,11 +348,16 @@ export default function StadiumPage() {
           const sel = selected?.id === f.id ? styles.frenSelected : "";
           const away = !f.online ? styles.away : "";
           const pos = project(f.x, f.y);
+          const scale = 0.78 + 0.3 * ((pos.top - 20) / 48); // smaller when far
           return (
             <button
               key={f.id}
               className={`${styles.fren} ${state} ${sel} ${away}`}
-              style={{ left: `${pos.left}%`, top: `${pos.top}%` }}
+              style={{
+                left: `${pos.left}%`,
+                top: `${pos.top}%`,
+                transform: `translate(-50%, -50%) scale(${scale})`,
+              }}
               onClick={() => setSelected(f)}
             >
               <span className={styles.avatarWrap}>
@@ -348,6 +378,43 @@ export default function StadiumPage() {
             </button>
           );
         })}
+
+        {/* the rest watch from the stands — small, perspective seated */}
+        {frens.slice(MAX_ON_PITCH, MAX_ON_PITCH + STAND_SEATS.length).map((f, i) => {
+          const seat = STAND_SEATS[i];
+          const sel = selected?.id === f.id ? styles.frenSelected : "";
+          return (
+            <button
+              key={f.id}
+              className={`${styles.fren} ${styles.fanSeat} ${sel} ${!f.online ? styles.away : ""}`}
+              style={{
+                left: `${seat.x}%`,
+                top: `${seat.y}%`,
+                transform: `translate(-50%, -50%) scale(${seat.s})`,
+              }}
+              onClick={() => setSelected(f)}
+            >
+              <span className={styles.avatarWrap}>
+                <Avatar
+                  photoUrl={f.photoUrl}
+                  initial={f.initial}
+                  gradient={f.gradient}
+                  size={42}
+                  fontSize={15}
+                  className={styles.frenAvatar}
+                />
+                <span className={styles.statusDot} data-online={f.online} />
+              </span>
+            </button>
+          );
+        })}
+
+        {/* overflow count if even the stands are full */}
+        {frens.length > MAX_ON_PITCH + STAND_SEATS.length && (
+          <span className={styles.overflowBadge}>
+            +{frens.length - MAX_ON_PITCH - STAND_SEATS.length} more in the concourse
+          </span>
+        )}
 
         {selected && <FrenSheet fren={selected} onClose={() => setSelected(null)} />}
       </div>

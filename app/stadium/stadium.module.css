@@ -40,8 +40,8 @@
     radial-gradient(ellipse 90% 35% at 50% -8%, rgba(108, 92, 231, 0.22), transparent 60%),
     radial-gradient(ellipse 130% 80% at 50% 55%, #0c0c11 0%, #060608 70%, #030304 100%);
   border: 1px solid rgba(108, 92, 231, 0.18);
-  height: 64dvh;
-  min-height: 430px;
+  height: 52dvh;
+  min-height: 380px;
   will-change: transform, opacity;
   animation: fadeIn 0.5s ease both;
   transition: box-shadow 0.3s;
@@ -103,6 +103,41 @@
   height: 100%;
   object-fit: cover;
   z-index: 1;
+}
+
+/* subtle black gradient over the art — readability without killing it */
+.stadium::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.38) 0%, transparent 22%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.42) 0%, transparent 26%);
+}
+
+.fanSeat {
+  opacity: 0.92;
+}
+
+.fanSeat.away {
+  opacity: 0.4;
+}
+
+.overflowBadge {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--tma-fg-dim);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  padding: 3px 9px;
+  border-radius: var(--tma-radius-pill);
 }
 
 .fren {

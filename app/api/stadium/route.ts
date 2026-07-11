@@ -50,6 +50,7 @@ async function buildStadium() {
         pnl: u.pnl,
         streak: u.streak,
         online: Date.now() - u.lastSeen < 10 * 60 * 1000,
+        lastSeen: u.lastSeen,
         ...posFor(u.id),
         livePick: live ?? null,
         lastPick: last ?? null,
