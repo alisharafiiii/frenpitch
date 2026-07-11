@@ -267,6 +267,17 @@ export default function HomePage() {
         </div>
       )}
       <div className={styles.hero}>
+        {/* rendered hero art (public/hero-stadium.png) — svg below is the
+            instant fallback while it loads / if missing */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/hero-stadium.png"
+          alt=""
+          className={styles.heroArtImg}
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
+        />
         {/* mini stadium art */}
         <svg className={styles.heroArt} viewBox="0 0 120 90" aria-hidden>
           <defs>

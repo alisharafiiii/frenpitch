@@ -22,6 +22,21 @@
   pointer-events: none;
 }
 
+.heroArtImg {
+  position: absolute;
+  right: -30px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 240px;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 1;
+  /* fade into the card on the left edge */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 26%);
+  mask-image: linear-gradient(to right, transparent 0%, black 26%);
+}
+
 .heroContent {
   position: relative;
   z-index: 1;
