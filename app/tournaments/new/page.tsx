@@ -126,13 +126,11 @@ export default function NewTournamentPage() {
     setFunding(false);
   };
 
-  const share = () => {
-    if (!inviteLink) return;
+  const share = () =>
     shareToContacts(
-      inviteLink,
+      inviteLink ?? "https://t.me/frenpitch_bot",
       `⚔️ ${name} — ${effectiveBuyIn} usdc buy-in.${pass ? " pass-protected 🔐" : ""} tap to join:`
     );
-  };
 
   return (
     <>
@@ -262,6 +260,29 @@ export default function NewTournamentPage() {
             <span className={invited.has(f.id) ? styles.checkOn : styles.check} />
           </button>
         ))}
+        {/* always-available path to telegram's native contact picker */}
+        <button
+          className={styles.inviteRow}
+          onClick={() =>
+            shareToContacts(
+              inviteLink ?? "https://t.me/frenpitch_bot",
+              inviteLink
+                ? `⚔️ ${name} — ${effectiveBuyIn} usdc buy-in. tap to join:`
+                : "⚽ join me on frenpitch — live picks, fren tournaments, football quizzes 🫡"
+            )
+          }
+        >
+          <span
+            className={`${ui.avatar} ${styles.inviteAvatar}`}
+            style={{ background: "var(--tma-bg-elevated)", fontSize: 15 }}
+          >
+            👤
+          </span>
+          <span className={styles.inviteName} style={{ color: "var(--tma-primary)" }}>
+            invite from telegram contacts
+          </span>
+          <span style={{ color: "var(--tma-primary)", fontSize: 16 }}>↗</span>
+        </button>
       </div>
 
       <div style={{ marginTop: 16 }}>
@@ -289,10 +310,22 @@ export default function NewTournamentPage() {
                 view your deposit on solana explorer ↗
               </a>
             )}
+            <button className={ui.btnPrimary} style={{ marginTop: 10 }} onClick={share}>
+              📤 send invite link to frens
+            </button>
             {inviteLink && (
-              <button className={ui.btnPrimary} style={{ marginTop: 10 }} onClick={share}>
-                📤 send invite link to frens
-              </button>
+              <div
+                style={{
+                  textAlign: "center",
+                  fontSize: 11,
+                  color: "var(--tma-fg-dim)",
+                  marginTop: 8,
+                  wordBreak: "break-all",
+                  userSelect: "all",
+                }}
+              >
+                {inviteLink}
+              </div>
             )}
           </>
         ) : (
