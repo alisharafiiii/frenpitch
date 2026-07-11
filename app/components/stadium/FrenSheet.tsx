@@ -1,6 +1,7 @@
 "use client";
 
 import type { Fren } from "@/app/types";
+import { Avatar } from "@/app/components/Avatar";
 import ui from "@/app/styles/ui.module.css";
 import styles from "./fren-sheet.module.css";
 
@@ -14,14 +15,13 @@ export function FrenSheet({ fren, onClose }: { fren: Fren; onClose: () => void }
         ✕
       </button>
       <div className={styles.top}>
-        <span
-          className={`${ui.avatar} ${styles.avatar}`}
-          style={{
-            background: `linear-gradient(135deg, ${fren.gradient[0]}, ${fren.gradient[1]})`,
-          }}
-        >
-          {fren.initial}
-        </span>
+        <Avatar
+          photoUrl={fren.photoUrl}
+          initial={fren.initial}
+          gradient={fren.gradient}
+          size={40}
+          fontSize={14}
+        />
         <div>
           <div className={styles.name}>{fren.handle}</div>
           <div className={styles.sub}>

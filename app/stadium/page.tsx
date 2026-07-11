@@ -7,6 +7,7 @@ import { mockFrens } from "@/app/data/mock-frens";
 import { bus } from "@/app/lib/events";
 import { TxLineClient } from "@/app/lib/txline";
 import { FrenSheet } from "@/app/components/stadium/FrenSheet";
+import { Avatar } from "@/app/components/Avatar";
 import { api } from "@/app/lib/api";
 import { shareToContacts } from "@/app/lib/telegram";
 import ui from "@/app/styles/ui.module.css";
@@ -36,6 +37,7 @@ interface ServerFren {
   id: string;
   handle: string;
   initial: string;
+  photoUrl?: string;
   pnl: number;
   streak: number;
   online: boolean;
@@ -59,6 +61,7 @@ function toFren(f: ServerFren, i: number): Fren {
     id: f.id,
     handle: f.handle,
     initial: f.initial,
+    photoUrl: f.photoUrl,
     gradient: GRADIENTS[i % GRADIENTS.length],
     pnl: f.pnl,
     streak: f.streak,
@@ -171,14 +174,14 @@ export default function StadiumPage() {
               style={{ left: `${f.x}%`, top: `${f.y}%` }}
               onClick={() => setSelected(f)}
             >
-              <span
-                className={`${ui.avatar} ${styles.frenAvatar}`}
-                style={{
-                  background: `linear-gradient(135deg, ${f.gradient[0]}, ${f.gradient[1]})`,
-                }}
-              >
-                {f.initial}
-              </span>
+              <Avatar
+                photoUrl={f.photoUrl}
+                initial={f.initial}
+                gradient={f.gradient}
+                size={40}
+                fontSize={14}
+                className={styles.frenAvatar}
+              />
               <span className={styles.tag}>
                 {f.livePick ? (f.pnl >= 0 ? `+${f.pnl}` : f.pnl) : "idle"}
               </span>

@@ -81,7 +81,7 @@ export async function getOrCreateUser(
     id,
     username,
     name,
-    photoUrl,
+    ...(photoUrl ? { photoUrl } : {}), // upstash rejects null/undefined values
     bankroll: DAILY_BANKROLL,
     pnl: 0,
     streak: 0,

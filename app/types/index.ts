@@ -60,6 +60,7 @@ export interface Fren {
   id: string;
   handle: string;
   initial: string;
+  photoUrl?: string;
   gradient: [string, string];
   /** matchday pnl in points */
   pnl: number;

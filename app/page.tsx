@@ -29,6 +29,7 @@ function toUiPick(p: ServerPick): Pick {
 }
 import { OddsCard } from "./components/odds/OddsCard";
 import { PickSlip } from "./components/slip/PickSlip";
+import { Avatar } from "./components/Avatar";
 import ui from "@/app/styles/ui.module.css";
 import styles from "./home.module.css";
 
@@ -132,19 +133,32 @@ export default function HomePage() {
   }, []);
 
   const [onlineFrens, setOnlineFrens] = useState<
-    { id: string; handle: string; initial: string; live: boolean }[]
+    { id: string; handle: string; initial: string; photoUrl?: string; live: boolean }[]
   >([]);
 
   // real frens for the online strip
   useEffect(() => {
-    api<{ frens: { id: string; handle: string; initial: string; online: boolean; livePick: unknown }[] }>(
-      "/api/stadium"
-    )
+    api<{
+      frens: {
+        id: string;
+        handle: string;
+        initial: string;
+        photoUrl?: string;
+        online: boolean;
+        livePick: unknown;
+      }[];
+    }>("/api/stadium")
       .then(({ frens }) =>
         setOnlineFrens(
           frens
             .filter((f) => f.online)
-            .map((f) => ({ id: f.id, handle: f.handle, initial: f.initial, live: !!f.livePick }))
+            .map((f) => ({
+              id: f.id,
+              handle: f.handle,
+              initial: f.initial,
+              photoUrl: f.photoUrl,
+              live: !!f.livePick,
+            }))
         )
       )
       .catch(() => {
@@ -264,17 +278,15 @@ export default function HomePage() {
         {onlineFrens.length > 0 ? (
           <div className={styles.frensOnline}>
             {onlineFrens.slice(0, 4).map((f, i) => (
-              <div
+              <Avatar
                 key={f.id}
-                className={`${ui.avatar} ${styles.miniAvatar}`}
-                style={{
-                  background: `linear-gradient(135deg, ${
-                    ["#00b894", "#e17055", "#0984e3", "#fd79a8"][i % 4]
-                  }, #6c5ce7)`,
-                }}
-              >
-                {f.initial}
-              </div>
+                photoUrl={f.photoUrl}
+                initial={f.initial}
+                gradient={[["#00b894", "#e17055", "#0984e3", "#fd79a8"][i % 4], "#6c5ce7"]}
+                size={26}
+                fontSize={10}
+                className={styles.miniAvatar}
+              />
             ))}
             <span>
               {onlineFrens

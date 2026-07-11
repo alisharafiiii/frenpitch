@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { getTgUser } from "@/app/lib/telegram";
+import { Avatar } from "@/app/components/Avatar";
 import ui from "@/app/styles/ui.module.css";
 
 /** profile — auto-created from telegram login (pfp, name, id),
@@ -12,17 +13,13 @@ export default function MePage() {
   return (
     <>
       <div className={ui.card} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span
-          className={ui.avatar}
-          style={{
-            width: 56,
-            height: 56,
-            fontSize: 20,
-            background: "linear-gradient(135deg, #6c5ce7, #a29bfe)",
-          }}
-        >
-          {user.name[0]?.toUpperCase()}
-        </span>
+        <Avatar
+          photoUrl={user.id ? `/api/avatar/${user.id}` : undefined}
+          initial={user.name[0]?.toUpperCase() ?? "?"}
+          gradient={["#6c5ce7", "#a29bfe"]}
+          size={56}
+          fontSize={20}
+        />
         <div>
           <div style={{ fontWeight: 800, fontSize: 16 }}>{user.username}</div>
           <div style={{ fontSize: 11, color: "var(--tma-fg-dim)" }}>

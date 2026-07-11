@@ -36,7 +36,7 @@ async function buildStadium() {
         id: u.id,
         handle: u.username,
         initial: (u.name[0] ?? "?").toUpperCase(),
-        photoUrl: u.photoUrl,
+        photoUrl: `/api/avatar/${u.id}`,
         pnl: u.pnl,
         streak: u.streak,
         online: Date.now() - u.lastSeen < 10 * 60 * 1000,
