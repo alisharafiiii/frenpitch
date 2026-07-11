@@ -157,7 +157,7 @@ export default function HomePage() {
   const onlineFrens = useMemo(
     () =>
       (stadiumData?.frens ?? [])
-        .filter((f) => f.online)
+        .filter((f) => f.online && f.id !== String(user.id)) // frens only, not you
         .map((f) => ({
           id: f.id,
           handle: f.handle,
@@ -165,7 +165,7 @@ export default function HomePage() {
           photoUrl: f.photoUrl,
           live: !!f.livePick,
         })),
-    [stadiumData]
+    [stadiumData, user.id]
   );
 
   const confirmPick = async (stake: number) => {
@@ -291,14 +291,14 @@ export default function HomePage() {
           </p>
         {onlineFrens.length > 0 ? (
           <div className={styles.frensOnline}>
-            {onlineFrens.slice(0, 4).map((f, i) => (
+            {onlineFrens.slice(0, 3).map((f, i) => (
               <Avatar
                 key={f.id}
                 photoUrl={f.photoUrl}
                 initial={f.initial}
-                gradient={[["#00b894", "#e17055", "#0984e3", "#fd79a8"][i % 4], "#6c5ce7"]}
-                size={26}
-                fontSize={10}
+                gradient={[["#00b894", "#e17055", "#0984e3"][i % 3], "#6c5ce7"]}
+                size={40}
+                fontSize={15}
                 className={styles.miniAvatar}
               />
             ))}
