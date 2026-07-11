@@ -271,7 +271,7 @@ export default function HomePage() {
             instant fallback while it loads / if missing */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/hero-stadium.png"
+          src="/hero-stadium.webp"
           alt=""
           className={styles.heroArtImg}
           onError={(e) => {

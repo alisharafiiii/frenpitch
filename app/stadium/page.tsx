@@ -164,7 +164,7 @@ export default function StadiumPage() {
             as the instant-loading fallback if the image is missing */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/stadium-bg.png"
+          src="/stadium-bg.webp"
           alt=""
           className={styles.bgArt}
           onError={(e) => {
