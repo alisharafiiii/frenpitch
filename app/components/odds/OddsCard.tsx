@@ -19,24 +19,28 @@ function ringFor(code: string): string {
   return RING_COLORS[h % RING_COLORS.length];
 }
 
-/** full-circle flag (svg image), emoji fallback if no iso / load error */
-function FlagBadge({ iso, emoji, ring }: { iso?: string; emoji: string; ring: string }) {
+/** 3d glass globe flag — deep curve, saturated core, purple rim light.
+ *  emoji fallback if no iso / load error. */
+function FlagBadge({ iso, emoji }: { iso?: string; emoji: string; ring?: string }) {
   return (
-    <span className={styles.badge} style={{ borderColor: ring }}>
+    <span className={styles.badge}>
       {iso ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={`https://hatscripts.github.io/circle-flags/flags/${iso}.svg`}
-          alt=""
-          width={30}
-          height={30}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          onError={(e) => {
-            const img = e.currentTarget as HTMLImageElement;
-            img.style.display = "none";
-            if (img.parentElement) img.parentElement.textContent = emoji;
-          }}
-        />
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`https://cdn.jsdelivr.net/gh/HatScripts/circle-flags@gh-pages/flags/${iso}.svg`}
+            alt=""
+            width={34}
+            height={34}
+            className={styles.flagImg}
+            onError={(e) => {
+              const img = e.currentTarget as HTMLImageElement;
+              img.style.display = "none";
+              if (img.parentElement) img.parentElement.textContent = emoji;
+            }}
+          />
+          <span className={styles.globeShine} aria-hidden />
+        </>
       ) : (
         emoji
       )}

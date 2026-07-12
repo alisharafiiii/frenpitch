@@ -29,16 +29,42 @@
 }
 
 .badge {
-  width: 34px;
-  height: 34px;
+  position: relative;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 19px;
   background: var(--tma-bg-elevated);
-  border: 2px solid var(--tma-primary);
   overflow: hidden;
+  box-shadow:
+    0 6px 12px rgba(0, 0, 0, 0.7),
+    0 0 10px rgba(124, 111, 240, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+.flagImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.22); /* fakes the sphere bulge */
+  filter: saturate(1.25);
+}
+
+/* option D glass globe: crescent light, specular dot, deep edge,
+   purple reflected rim to match the stadium neon */
+.globeShine {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 12%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.1) 50%, transparent 66%),
+    radial-gradient(circle at 29% 20%, rgba(255, 255, 255, 0.95) 0%, transparent 8%),
+    radial-gradient(circle at 50% 52%, transparent 38%, rgba(0, 0, 0, 0.3) 66%, rgba(5, 0, 20, 0.78) 100%),
+    radial-gradient(ellipse 60% 26% at 50% 98%, rgba(140, 120, 255, 0.45) 0%, transparent 68%);
 }
 
 .code {
