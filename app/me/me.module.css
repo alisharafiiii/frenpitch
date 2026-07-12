@@ -168,8 +168,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle, rgba(124, 111, 240, 0.28), transparent 75%);
-  border: 1.5px solid rgba(124, 111, 240, 0.35);
+  background: #060609;
 }
 
 .artCircle img {
