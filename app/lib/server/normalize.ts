@@ -97,8 +97,14 @@ function isFullMatchPeriod(period: string | undefined): boolean {
   return !period || period.toLowerCase().includes("full");
 }
 
-/** decode a 1x2 market entry (PriceNames part1/draw/part2, thousandths) */
-function decode1x2(raw: Raw): Odds | null {
+interface Decoded1x2 {
+  odds: Odds;
+  probs?: { home: number; draw: number; away: number };
+}
+
+/** decode a 1x2 market entry: Prices in thousandths + Pct = market-implied
+ *  win probabilities (demargined, straight from txline) */
+function decode1x2(raw: Raw): Decoded1x2 | null {
   const oddsType = pick<string>(raw, "SuperOddsType");
   if (!oddsType || !oddsType.includes("1X2")) return null;
 
@@ -106,30 +112,44 @@ function decode1x2(raw: Raw): Odds | null {
   const prices = pick<number[]>(raw, "Prices");
   if (!names || !prices || names.length !== prices.length) return null;
 
-  const at = (label: string): number | undefined => {
-    const i = names.findIndex((n) => n.toLowerCase() === label);
-    return i >= 0 ? prices[i] / 1000 : undefined;
+  const idx = (label: string): number =>
+    names.findIndex((n) => n.toLowerCase() === label);
+  const iH = idx("part1");
+  const iD = idx("draw");
+  const iA = idx("part2");
+  if (iH < 0 || iD < 0 || iA < 0) return null;
+
+  const odds: Odds = {
+    home: prices[iH] / 1000,
+    draw: prices[iD] / 1000,
+    away: prices[iA] / 1000,
   };
-  const home = at("part1");
-  const draw = at("draw");
-  const away = at("part2");
-  if (home === undefined || draw === undefined || away === undefined) return null;
-  return { home, draw, away };
+
+  let probs: Decoded1x2["probs"];
+  const pct = pick<(string | number)[]>(raw, "Pct");
+  if (pct && pct.length === names.length) {
+    probs = {
+      home: Math.round(Number(pct[iH])),
+      draw: Math.round(Number(pct[iD])),
+      away: Math.round(Number(pct[iA])),
+    };
+  }
+  return { odds, probs };
 }
 
-/** odds snapshot (array of market entries) → current full-match 1x2 odds.
+/** odds snapshot (array of market entries) → current full-match 1x2.
  *  prefers full-match markets, falls back to any 1x2; latest Ts wins. */
-export function extractSnapshotOdds(entries: Raw[]): Odds | null {
+export function extractSnapshotOdds(entries: Raw[]): Decoded1x2 | null {
   if (!Array.isArray(entries)) return null;
   const candidates = entries
-    .map((e) => ({ e, odds: decode1x2(e) }))
-    .filter((c): c is { e: Raw; odds: Odds } => c.odds !== null)
+    .map((e) => ({ e, dec: decode1x2(e) }))
+    .filter((c): c is { e: Raw; dec: Decoded1x2 } => c.dec !== null)
     .sort((a, b) => (pick<number>(b.e, "Ts") ?? 0) - (pick<number>(a.e, "Ts") ?? 0));
   if (candidates.length === 0) return null;
   const full = candidates.find((c) =>
     isFullMatchPeriod(pick<string>(c.e, "MarketPeriod"))
   );
-  return (full ?? candidates[0]).odds;
+  return (full ?? candidates[0]).dec;
 }
 
 export function normalizeOddsUpdate(raw: Raw, prev?: Odds): MatchEvent | null {
@@ -139,8 +159,9 @@ export function normalizeOddsUpdate(raw: Raw, prev?: Odds): MatchEvent | null {
   // full-match market only (half markets skipped)
   if (!isFullMatchPeriod(pick<string>(raw, "MarketPeriod"))) return null;
 
-  const odds = decode1x2(raw);
-  if (!odds) return null;
+  const dec = decode1x2(raw);
+  if (!dec) return null;
+  const { odds, probs } = dec;
   const { home, draw, away } = odds;
 
   // biggest mover vs previous snapshot
@@ -166,6 +187,7 @@ export function normalizeOddsUpdate(raw: Raw, prev?: Odds): MatchEvent | null {
     type: "odds_move",
     minute: pick<number>(raw, "Minute", "minute") ?? 0,
     odds,
+    probs,
     outcome,
     delta,
     raw,

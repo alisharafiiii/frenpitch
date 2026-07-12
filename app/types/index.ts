@@ -8,6 +8,13 @@ export interface Odds {
   away: number;
 }
 
+/** market-implied win probabilities (%) — from txline's Pct field */
+export interface Probs {
+  home: number;
+  draw: number;
+  away: number;
+}
+
 export interface Match {
   id: string;
   home: string; // team code e.g. "BRA"
@@ -24,6 +31,7 @@ export interface Match {
   scoreAway: number;
   odds: Odds;
   oddsDelta: Partial<Record<Outcome, number>>; // move over last window
+  probs?: Probs;
 }
 
 /** Normalized event object — the ONE shape every client consumes:
@@ -50,6 +58,7 @@ export interface MatchEvent {
   scoreHome?: number;
   scoreAway?: number;
   odds?: Odds;
+  probs?: Probs;
   /** for odds_move: which outcome moved and by how much */
   outcome?: Outcome;
   delta?: number;

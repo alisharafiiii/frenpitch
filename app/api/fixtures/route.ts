@@ -35,8 +35,11 @@ export async function GET() {
           const entries = await txGet<Record<string, unknown>[]>(
             `/api/odds/snapshot/${m.id}`
           );
-          const odds = extractSnapshotOdds(entries);
-          if (odds) m.odds = odds;
+          const dec = extractSnapshotOdds(entries);
+          if (dec) {
+            m.odds = dec.odds;
+            if (dec.probs) m.probs = dec.probs;
+          }
         } catch {
           /* fixture without odds yet — leave zeros */
         }

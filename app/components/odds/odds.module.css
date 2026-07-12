@@ -199,6 +199,42 @@
   font-size: 14px;
 }
 
+/* ---- live win probability meter ---- */
+
+.cardWithMeter {
+  flex-wrap: wrap;
+}
+
+.meterRow {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.meterPct {
+  font-size: 10.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  min-width: 30px;
+  text-align: center;
+}
+
+.meterTrack {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.meterSeg {
+  height: 100%;
+  transition: width 0.7s cubic-bezier(0.22, 0.9, 0.35, 1);
+}
+
 
 /* module-scoped keyframes (css modules hash animation names —
    global keyframes never matched) */

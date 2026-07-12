@@ -127,6 +127,7 @@ export default function HomePage() {
             next.oddsDelta = e.outcome && e.delta ? { [e.outcome]: e.delta } : {};
             next.odds = e.odds;
           }
+          if (e.probs) next.probs = e.probs;
           if (e.scoreHome !== undefined && e.scoreAway !== undefined) {
             next.scoreHome = e.scoreHome;
             next.scoreAway = e.scoreAway;

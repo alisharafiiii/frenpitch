@@ -92,9 +92,13 @@ export function OddsCard({
   ];
   const isLive = match.status === "live" || match.status === "ht";
   const hasOdds = match.odds.home > 0;
+  const showMeter = isLive && match.probs;
 
   return (
-    <div className={styles.card} style={{ animationDelay: `${index * 0.055}s` }}>
+    <div
+      className={`${styles.card} ${showMeter ? styles.cardWithMeter : ""}`}
+      style={{ animationDelay: `${index * 0.055}s` }}
+    >
       {/* teams */}
       <div className={styles.teams}>
         <div className={styles.team}>
@@ -163,6 +167,32 @@ export function OddsCard({
           </>
         )}
       </div>
+
+      {/* live win probability meter — market-implied, updates with the stream */}
+      {showMeter && match.probs && (
+        <div className={styles.meterRow}>
+          <span className={styles.meterPct} style={{ color: "#34d399" }}>
+            {match.probs.home}%
+          </span>
+          <div className={styles.meterTrack}>
+            <div
+              className={styles.meterSeg}
+              style={{ width: `${match.probs.home}%`, background: "#34d399" }}
+            />
+            <div
+              className={styles.meterSeg}
+              style={{ width: `${match.probs.draw}%`, background: "rgba(255,255,255,0.22)" }}
+            />
+            <div
+              className={styles.meterSeg}
+              style={{ width: `${match.probs.away}%`, background: "#8b7ff5" }}
+            />
+          </div>
+          <span className={styles.meterPct} style={{ color: "#8b7ff5" }}>
+            {match.probs.away}%
+          </span>
+        </div>
+      )}
     </div>
   );
 }
