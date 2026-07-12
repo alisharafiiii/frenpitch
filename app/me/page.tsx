@@ -143,7 +143,7 @@ export default function MePage() {
       <div className={styles.rowCard} style={{ flexWrap: "wrap" }}>
         <div className={styles.artCircle}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/stackchan.webp" alt="" />
+          <img src="/icon-droid.webp" alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
         <div className={styles.rowMain}>
           <div className={styles.rowTitle}>pair your matchday droid</div>
@@ -170,11 +170,8 @@ export default function MePage() {
       </div>
       <div className={styles.rowCard}>
         <div className={styles.artCircle}>
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#8b7ff5" strokeWidth="1.6" aria-hidden>
-            <rect x="3" y="6" width="18" height="13" rx="2.5" />
-            <path d="M3 10h18" />
-            <circle cx="16.5" cy="14.5" r="1.2" fill="#8b7ff5" stroke="none" />
-          </svg>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon-wallet.webp" alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
         <div className={styles.rowMain}>
           <div className={styles.rowTitle}>

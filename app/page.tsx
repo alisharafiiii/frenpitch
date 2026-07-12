@@ -288,7 +288,7 @@ export default function HomePage() {
           </div>
           <h2>gm {user.username}</h2>
           <p>
-            {onlineFrens.length} frens live in the stadium 👥
+            {onlineFrens.length} frens live in the stadium
           </p>
           <p>
             your matchday bankroll:{" "}
