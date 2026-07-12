@@ -6,6 +6,16 @@ import { mockFrens } from "@/app/data/mock-frens";
 import { shareToContacts } from "@/app/lib/telegram";
 import { useTgUser } from "@/app/lib/useTgUser";
 import { api } from "@/app/lib/api";
+import { useApi } from "@/app/lib/useApi";
+import {
+  IconBars,
+  IconCalendar,
+  IconChest,
+  IconClockMini,
+  IconRobot,
+  IconTarget,
+  IconTrophy,
+} from "@/app/components/icons";
 import type { QuizQuestion } from "@/app/types";
 import ui from "@/app/styles/ui.module.css";
 import styles from "./quiz.module.css";
@@ -92,10 +102,27 @@ export default function QuizPage() {
   );
 }
 
-/* ---------- start screen (no auto-start!) ---------- */
+/* ---------- start screen: quiz arena ---------- */
+
+interface QuizStats {
+  quizPoints: number;
+  gamesPlayed: number;
+  accuracy: number | null;
+  bestStreak: number;
+  rank: number | null;
+  daily: { done: number; target: number; reward: number; claimed: boolean };
+  resetsInMs: number;
+}
+
+function fmtCountdown(ms: number): string {
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  return `${h}h ${m}m left`;
+}
 
 function StartScreen({ onMode }: { onMode: (m: Mode) => void }) {
   const [creating, setCreating] = useState(false);
+  const { data: stats } = useApi<QuizStats>("/api/quiz/stats");
 
   const createLobby = async () => {
     setCreating(true);
@@ -109,29 +136,169 @@ function StartScreen({ onMode }: { onMode: (m: Mode) => void }) {
     }
   };
 
+  const dailyPct = stats ? (stats.daily.done / stats.daily.target) * 100 : 0;
+
   return (
     <>
-      <div className={ui.sectionLabel}>🧠 football quiz</div>
-      <div className={ui.card} style={{ marginBottom: 10 }}>
-        <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>challenge your frens ⚔️</div>
-        <div style={{ fontSize: 12, color: "var(--tma-fg-dim)", marginBottom: 12 }}>
-          same questions, same clock, served by the platform — nobody picks, nobody
-          cheats. fastest correct answer scores more.
+      {/* arena header */}
+      <div className={styles.arenaHead}>
+        <span className={styles.brainBadge}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/nav-quiz-on.webp" alt="" width={46} height={46} />
+        </span>
+        <div className={styles.arenaTitleWrap}>
+          <h1 className={styles.arenaTitle}>quiz arena</h1>
+          <p className={styles.arenaSub}>compete. learn. earn.</p>
         </div>
-        <button className={ui.btnPrimary} onClick={createLobby} disabled={creating}>
-          {creating ? "creating lobby…" : "⚔️ create fren lobby"}
-        </button>
+        <div className={styles.pointsChip}>
+          <IconBoltMini />
+          <div>
+            <div className={`${styles.pointsValue} ${ui.num}`}>
+              {(stats?.quizPoints ?? 0).toLocaleString()}
+            </div>
+            <div className={styles.pointsLabel}>your points</div>
+          </div>
+        </div>
       </div>
-      <div className={ui.card}>
-        <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>warm up vs bots 🤖</div>
-        <div style={{ fontSize: 12, color: "var(--tma-fg-dim)", marginBottom: 12 }}>
-          instant solo match against the lobby bots. no stakes, pure practice.
+
+      {/* challenge your frens */}
+      <div className={styles.arenaCard}>
+        <div className={`${styles.artTile} ${styles.artPurple}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/quiz-brain.webp"
+            alt=""
+            className={styles.artImg}
+            onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/nav-quiz-on.webp" alt="" width={64} height={64} />
         </div>
-        <button className={ui.btnGhost} onClick={() => onMode({ kind: "bots" })}>
-          🤖 quick match
-        </button>
+        <div className={styles.arenaCardMain}>
+          <div className={styles.arenaCardTitle}>challenge your frens ⚔️</div>
+          <p className={styles.arenaCardCopy}>
+            same questions, same clock, served by the platform — nobody picks, nobody
+            cheats. fastest correct answer scores more.
+          </p>
+          <button className={ui.btnPrimary} onClick={createLobby} disabled={creating}>
+            {creating ? "creating lobby…" : "⚔️ create fren lobby"}
+          </button>
+        </div>
+      </div>
+
+      {/* warm up vs bots */}
+      <div className={styles.arenaCard}>
+        <div className={`${styles.artTile} ${styles.artGreen}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/quiz-robot.webp"
+            alt=""
+            className={styles.artImg}
+            onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+          />
+          <IconRobot size={52} />
+        </div>
+        <div className={styles.arenaCardMain}>
+          <div className={styles.arenaCardTitle}>warm up vs bots</div>
+          <p className={styles.arenaCardCopy}>
+            instant solo match against the lobby bots. no stakes, pure practice.
+          </p>
+          <button className={styles.greenBtn} onClick={() => onMode({ kind: "bots" })}>
+            <IconRobot size={17} /> quick match
+          </button>
+        </div>
+      </div>
+
+      {/* quiz stats */}
+      <div className={styles.rowHead}>
+        <IconBars size={17} color="#8b7ff5" />
+        <span>quiz stats</span>
+      </div>
+      <div className={styles.statsStrip}>
+        <div className={styles.statCell}>
+          <IconTarget size={22} color="#8b7ff5" />
+          <div className={`${styles.statNum} ${ui.num}`}>{stats?.gamesPlayed ?? 0}</div>
+          <div className={styles.statCap}>games played</div>
+        </div>
+        <div className={styles.statCell}>
+          <IconTarget size={22} color="#34d399" />
+          <div className={`${styles.statNum} ${ui.num}`}>
+            {stats?.accuracy !== null && stats !== undefined ? `${stats.accuracy}%` : "—"}
+          </div>
+          <div className={styles.statCap}>avg accuracy</div>
+        </div>
+        <div className={styles.statCell}>
+          <IconBoltAmber />
+          <div className={`${styles.statNum} ${ui.num}`}>{stats?.bestStreak ?? 0}</div>
+          <div className={styles.statCap}>best streak</div>
+        </div>
+        <div className={styles.statCell}>
+          <IconTrophy size={22} color="#8b7ff5" />
+          <div className={`${styles.statNum} ${ui.num}`}>
+            {stats?.rank ? `#${stats.rank}` : "—"}
+          </div>
+          <div className={styles.statCap}>global rank</div>
+        </div>
+      </div>
+
+      {/* daily challenge */}
+      <div className={styles.rowHead}>
+        <IconCalendar size={17} color="#8b7ff5" />
+        <span>daily challenge</span>
+        <span className={styles.countChip}>
+          <IconClockMini color="#8b7ff5" /> {stats ? fmtCountdown(stats.resetsInMs) : "…"}
+        </span>
+      </div>
+      <div className={styles.dailyCard}>
+        <div className={`${styles.artTile} ${styles.artSmall} ${styles.artPurple}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/quiz-chest.webp"
+            alt=""
+            className={styles.artImg}
+            onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+          />
+          <IconChest size={38} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p className={styles.dailyCopy}>
+            answer {stats?.daily.target ?? 10} questions correctly today and earn{" "}
+            <b style={{ color: "#8b7ff5" }}>{stats?.daily.reward ?? 500}</b> points.
+          </p>
+          <div className={styles.dailyRow}>
+            <div className={styles.dailyTrack}>
+              <div className={styles.dailyFill} style={{ width: `${dailyPct}%` }} />
+            </div>
+            <span className={`${styles.dailyCount} ${ui.num}`}>
+              {stats?.daily.done ?? 0} / {stats?.daily.target ?? 10}
+            </span>
+          </div>
+        </div>
+        <div className={styles.rewardChip}>
+          <IconBoltAmber />
+          <div>
+            <div className={`${styles.pointsValue} ${ui.num}`}>{stats?.daily.reward ?? 500}</div>
+            <div className={styles.pointsLabel}>points</div>
+          </div>
+        </div>
       </div>
     </>
+  );
+}
+
+function IconBoltMini() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="#8b7ff5">
+      <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
+    </svg>
+  );
+}
+
+function IconBoltAmber() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="#f0b429">
+      <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
+    </svg>
   );
 }
 
@@ -239,7 +406,13 @@ function LobbyMatch({
   const [now, setNow] = useState(Date.now());
   const [picked, setPicked] = useState<Record<number, number>>({});
   const [players, setPlayers] = useState<Player[]>([]);
+  const streakRef = useRef(0);
   const me = useTgUser();
+
+  // stats: one game played
+  useEffect(() => {
+    void api("/api/quiz/stats", { method: "POST", body: { type: "game" } }).catch(() => {});
+  }, []);
 
   // clock tick
   useEffect(() => {
@@ -335,13 +508,21 @@ function LobbyMatch({
   const answer = (i: number) => {
     if (phase !== "question" || myPick !== undefined) return;
     setPicked((prev) => ({ ...prev, [qIndex]: i }));
-    if (i === q.correctIndex) {
-      const speedBonus = Math.max(1, Math.round(phaseRemaining / 3000));
+    const correct = i === q.correctIndex;
+    const speedBonus = Math.max(1, Math.round(phaseRemaining / 3000));
+    const points = correct ? 1 + speedBonus : 0;
+    streakRef.current = correct ? streakRef.current + 1 : 0;
+    if (correct) {
       void api("/api/quiz", {
         method: "PATCH",
-        body: { code, action: "score", points: 1 + speedBonus },
+        body: { code, action: "score", points },
       });
     }
+    // arena stats + daily challenge
+    void api("/api/quiz/stats", {
+      method: "POST",
+      body: { type: "answer", correct, points, streak: streakRef.current },
+    }).catch(() => {});
   };
 
   return (
@@ -429,6 +610,12 @@ function BotMatch({ onExit }: { onExit: () => void }) {
   const [pickedIdx, setPickedIdx] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(quizBank[0].seconds);
   const botTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const streakRef = useRef(0);
+
+  // stats: one practice game
+  useEffect(() => {
+    void api("/api/quiz/stats", { method: "POST", body: { type: "game" } }).catch(() => {});
+  }, []);
 
   const q = quizBank[qIndex];
 
@@ -486,10 +673,16 @@ function BotMatch({ onExit }: { onExit: () => void }) {
   const answer = (i: number) => {
     if (phase !== "question" || pickedIdx !== null) return;
     setPickedIdx(i);
-    if (i === q.correctIndex) {
-      const bonus = Math.max(1, Math.round(timeLeft / 3));
+    const correct = i === q.correctIndex;
+    const bonus = Math.max(1, Math.round(timeLeft / 3));
+    if (correct) {
       setPlayers((prev) => prev.map((p) => (p.isMe ? { ...p, score: p.score + 1 + bonus } : p)));
     }
+    streakRef.current = correct ? streakRef.current + 1 : 0;
+    void api("/api/quiz/stats", {
+      method: "POST",
+      body: { type: "answer", correct, points: correct ? 1 + bonus : 0, streak: streakRef.current },
+    }).catch(() => {});
     reveal();
   };
 

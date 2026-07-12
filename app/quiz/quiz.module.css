@@ -157,3 +157,262 @@
 .finalScore {
   font-size: 16px;
 }
+
+/* ---------- quiz arena (start screen) ---------- */
+
+.arenaHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #0d0d15;
+  border: 1px solid var(--tma-border);
+  border-radius: 18px;
+  padding: 14px;
+  margin-bottom: 12px;
+  will-change: transform, opacity;
+  animation: fadeIn 0.4s ease both;
+}
+
+.brainBadge {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: radial-gradient(circle, rgba(124, 111, 240, 0.35), transparent 75%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arenaTitleWrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.arenaTitle {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.arenaSub {
+  font-size: 12px;
+  color: var(--tma-fg-dim);
+}
+
+.pointsChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(124, 111, 240, 0.08);
+  border: 1px solid rgba(124, 111, 240, 0.35);
+  border-radius: 14px;
+  padding: 8px 12px;
+}
+
+.pointsValue {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.pointsLabel {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--tma-fg-muted);
+}
+
+.arenaCard {
+  display: flex;
+  gap: 12px;
+  background: #0d0d15;
+  border: 1px solid var(--tma-border);
+  border-radius: 18px;
+  padding: 14px;
+  margin-bottom: 12px;
+  will-change: transform, opacity;
+  animation: slideUp 0.4s ease both;
+}
+
+.artTile {
+  width: 108px;
+  height: 128px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #08080d;
+}
+
+.artSmall {
+  width: 64px;
+  height: 64px;
+}
+
+.artPurple {
+  box-shadow: inset 0 0 40px rgba(124, 111, 240, 0.25);
+}
+
+.artGreen {
+  box-shadow: inset 0 0 40px rgba(52, 211, 153, 0.22);
+}
+
+.artImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.arenaCardMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.arenaCardTitle {
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 5px;
+}
+
+.arenaCardCopy {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--tma-fg-dim);
+  margin-bottom: 10px;
+  flex: 1;
+}
+
+.greenBtn {
+  width: 100%;
+  background: transparent;
+  border: 1.5px solid #34d399;
+  color: #34d399;
+  border-radius: 12px;
+  padding: 11px;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.rowHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  margin: 16px 0 10px;
+}
+
+.countChip {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8b7ff5;
+  border: 1px solid rgba(124, 111, 240, 0.35);
+  border-radius: var(--tma-radius-pill);
+  padding: 5px 12px;
+}
+
+.statsStrip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: #0d0d15;
+  border: 1px solid var(--tma-border);
+  border-radius: 16px;
+  padding: 14px 6px;
+}
+
+.statCell {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  border-right: 1px solid var(--tma-border);
+}
+
+.statCell:last-child {
+  border-right: none;
+}
+
+.statNum {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.statCap {
+  font-size: 10px;
+  color: var(--tma-fg-dim);
+  font-weight: 600;
+}
+
+.dailyCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #0d0d15;
+  border: 1px solid var(--tma-border);
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.dailyCopy {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--tma-fg);
+  margin-bottom: 8px;
+}
+
+.dailyRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dailyTrack {
+  flex: 1;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.dailyFill {
+  height: 100%;
+  border-radius: 4px;
+  background: #8b7ff5;
+  transition: width 0.5s ease;
+}
+
+.dailyCount {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--tma-fg-dim);
+}
+
+.rewardChip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(240, 180, 41, 0.07);
+  border: 1px solid rgba(240, 180, 41, 0.3);
+  border-radius: 14px;
+  padding: 8px 11px;
+  flex-shrink: 0;
+}

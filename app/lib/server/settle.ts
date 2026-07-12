@@ -76,9 +76,17 @@ async function applyResult(p: PickRecord, result: Outcome): Promise<void> {
     await redis().hincrby(userKey, "bankroll", payout);
     await redis().hincrby(userKey, "pnl", payout - p.stake);
     await redis().hincrby(userKey, "streak", 1);
+    await redis().hincrby(userKey, "picksWon", 1);
+    // best win streak for the profile
+    const u = await redis().hgetall<Record<string, string | number>>(userKey);
+    const cur = Number(u?.streak ?? 0);
+    if (cur > Number(u?.bestWinStreak ?? 0)) {
+      await redis().hset(userKey, { bestWinStreak: cur });
+    }
     await redis().hset(`pick:${p.id}`, { status: "won" });
   } else {
     await redis().hincrby(userKey, "pnl", -p.stake);
+    await redis().hincrby(userKey, "picksLost", 1);
     await redis().hset(userKey, { streak: 0 });
     await redis().hset(`pick:${p.id}`, { status: "lost" });
   }

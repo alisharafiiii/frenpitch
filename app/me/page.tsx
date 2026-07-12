@@ -1,16 +1,58 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTgUser } from "@/app/lib/useTgUser";
-import { api } from "@/app/lib/api";
+import { useApi } from "@/app/lib/useApi";
 import { Avatar } from "@/app/components/Avatar";
+import {
+  IconBars,
+  IconFire,
+  IconQr,
+  IconRobot,
+  IconTarget,
+  IconTrophy,
+} from "@/app/components/icons";
 import ui from "@/app/styles/ui.module.css";
+import styles from "./me.module.css";
 
-/** profile — auto-created from telegram login (pfp, name, id),
- *  editable later. droid pairing lives here too. */
+interface Profile {
+  handle: string;
+  id: string;
+  level: number;
+  title: string;
+  points: number;
+  stats: {
+    tournaments: number;
+    wins: number;
+    winStreak: number;
+    accuracy: number | null;
+  };
+  achievements: { key: string; name: string; desc: string; earned: boolean }[];
+}
+
+const BADGE_COLORS: Record<string, string> = {
+  quiz_wizard: "#8b7ff5",
+  sharp_shooter: "#34d399",
+  hot_streak: "#f0b429",
+  tournamenter: "#60a5fa",
+  frens_united: "#8b7ff5",
+};
+
+function BadgeIcon({ k, color }: { k: string; color: string }) {
+  if (k === "quiz_wizard")
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src="/nav-quiz-on.webp" alt="" width={44} height={44} />
+    );
+  if (k === "sharp_shooter") return <IconTarget size={34} color={color} />;
+  if (k === "hot_streak") return <IconFire size={34} color={color} />;
+  if (k === "tournamenter") return <IconTrophy size={34} color={color} />;
+  return <IconRobot size={34} color={color} />;
+}
+
 export default function MePage() {
   const user = useTgUser();
-  const [serverIdentity, setServerIdentity] = useState<string>("checking…");
+  const { data: profile } = useApi<Profile>("/api/profile");
   const [bridge, setBridge] = useState(false);
 
   useEffect(() => {
@@ -18,50 +60,196 @@ export default function MePage() {
       typeof window !== "undefined" &&
         Boolean((window as { Telegram?: { WebApp?: unknown } }).Telegram?.WebApp)
     );
-    api<{ user: { id: string; username: string } }>("/api/me")
-      .then(({ user: u }) => setServerIdentity(`${u.username} (id ${u.id})`))
-      .catch(() => setServerIdentity("server unreachable"));
   }, []);
 
   return (
     <>
-      <div className={ui.card} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Avatar
-          photoUrl={user.id ? `/api/avatar/${user.id}` : undefined}
-          initial={user.name[0]?.toUpperCase() ?? "?"}
-          gradient={["#6c5ce7", "#a29bfe"]}
-          size={56}
-          fontSize={20}
-        />
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>{user.username}</div>
-          <div style={{ fontSize: 11, color: "var(--tma-fg-dim)" }}>
-            tg bridge: {bridge ? "✅ connected" : "❌ not detected"} · v4
+      {/* player card */}
+      <div className={styles.card}>
+        <div className={styles.profileTop}>
+          <div className={styles.pfpRing}>
+            <Avatar
+              photoUrl={user.id ? `/api/avatar/${user.id}` : undefined}
+              initial={(user.name[0] ?? "?").toUpperCase()}
+              gradient={["#6c5ce7", "#a29bfe"]}
+              size={80}
+              fontSize={28}
+            />
           </div>
-          <div style={{ fontSize: 11, color: "var(--tma-fg-dim)" }}>
-            server sees: {serverIdentity}
+          <div className={styles.profileMain}>
+            <div className={styles.nameRow}>
+              {profile?.handle ?? user.username}
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="#8b7ff5" aria-hidden>
+                <path d="M12 2l2.4 2.4 3.3-.5 1 3.2 3 1.5-1.2 3.4 1.2 3.4-3 1.5-1 3.2-3.3-.5L12 22l-2.4-2.4-3.3.5-1-3.2-3-1.5 1.2-3.4L2.3 8.6l3-1.5 1-3.2 3.3.5L12 2z" />
+                <path d="M9.2 12.2l2 2 3.8-4" stroke="#0d0d15" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div className={styles.badgeRow}>
+              <span className={styles.levelChip}>LEVEL {profile?.level ?? 1}</span>
+              <span style={{ color: "var(--tma-fg-muted)" }}>·</span>
+              <span className={styles.title}>{profile?.title ?? "Rookie"}</span>
+            </div>
+            <div className={styles.diag}>
+              tg bridge: {bridge ? "✅ connected" : "❌ not detected"} · v6
+              <br />
+              server sees: {profile ? `${profile.handle} (id ${profile.id})` : "checking…"}
+            </div>
+          </div>
+          <div className={styles.pointsChip}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8b7ff5" aria-hidden>
+              <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
+            </svg>
+            <div>
+              <div className={`${styles.pointsValue} ${ui.num}`}>
+                {(profile?.points ?? 0).toLocaleString()}
+              </div>
+              <div className={styles.pointsLabel}>your points</div>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.statsRow}>
+          <div className={styles.statCell}>
+            <IconTarget size={22} color="#8b7ff5" />
+            <div className={`${styles.statNum} ${ui.num}`}>{profile?.stats.tournaments ?? 0}</div>
+            <div className={styles.statCap}>tournaments</div>
+          </div>
+          <div className={styles.statCell}>
+            <IconTrophy size={22} color="#8b7ff5" />
+            <div className={`${styles.statNum} ${ui.num}`}>{profile?.stats.wins ?? 0}</div>
+            <div className={styles.statCap}>wins</div>
+          </div>
+          <div className={styles.statCell}>
+            <IconFire size={22} color="#8b7ff5" />
+            <div className={`${styles.statNum} ${ui.num}`}>{profile?.stats.winStreak ?? 0}</div>
+            <div className={styles.statCap}>win streak</div>
+          </div>
+          <div className={styles.statCell}>
+            <IconBars size={22} color="#8b7ff5" />
+            <div className={`${styles.statNum} ${ui.num}`}>
+              {profile?.stats.accuracy !== null && profile !== undefined
+                ? `${profile.stats.accuracy}%`
+                : "—"}
+            </div>
+            <div className={styles.statCap}>accuracy</div>
           </div>
         </div>
       </div>
 
-      <div className={ui.sectionLabel}>🤖 stackchan droid</div>
-      <div className={ui.card}>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
-          pair your matchday droid
+      {/* stackchan droid */}
+      <div className={styles.secHead}>
+        <IconRobot size={16} color="var(--tma-fg-dim)" /> STACKCHAN DROID
+      </div>
+      <div className={styles.rowCard} style={{ flexWrap: "wrap" }}>
+        <div className={styles.artCircle}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/stackchan.webp" alt="" />
         </div>
-        <div style={{ fontSize: 12, color: "var(--tma-fg-dim)", marginBottom: 12 }}>
-          your stackchan reacts to goals, calls odds moves, roasts your frens&apos;
-          picks, and hosts halftime quizzes. scan the qr from the droid screen to pair.
+        <div className={styles.rowMain}>
+          <div className={styles.rowTitle}>pair your matchday droid</div>
+          <p className={styles.rowCopy}>
+            your stackchan reacts to goals, calls odds moves, roasts your frens&apos;
+            picks, and hosts halftime quizzes. scan the qr from the droid screen to pair.
+          </p>
         </div>
-        <button className={ui.btnGhost}>📷 pair droid (qr)</button>
+        <div className={styles.qrTile}>
+          <IconQr size={30} />
+        </div>
+        <button className={styles.pairBtn}>
+          <IconQr size={16} /> pair droid (qr)
+        </button>
       </div>
 
-      <div className={ui.sectionLabel}>🔐 wallet</div>
-      <div className={ui.card}>
-        <div style={{ fontSize: 12, color: "var(--tma-fg-dim)" }}>
-          embedded solana wallet — created silently on first login. only tournament
-          buy-ins touch the chain; points stay off-chain for speed.
+      {/* wallet */}
+      <div className={styles.secHead}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tma-fg-dim)" strokeWidth="1.8" aria-hidden>
+          <rect x="3" y="6" width="18" height="13" rx="2.5" />
+          <path d="M3 10h18M16 15h2" strokeLinecap="round" />
+        </svg>
+        WALLET
+      </div>
+      <div className={styles.rowCard}>
+        <div className={styles.artCircle}>
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#8b7ff5" strokeWidth="1.6" aria-hidden>
+            <rect x="3" y="6" width="18" height="13" rx="2.5" />
+            <path d="M3 10h18" />
+            <circle cx="16.5" cy="14.5" r="1.2" fill="#8b7ff5" stroke="none" />
+          </svg>
         </div>
+        <div className={styles.rowMain}>
+          <div className={styles.rowTitle}>
+            solana wallet <span className={styles.embeddedChip}>embedded</span>
+          </div>
+          <p className={styles.rowCopy}>
+            embedded solana wallet — created silently on first login. only tournament
+            buy-ins touch the chain; points stay off-chain for speed.
+          </p>
+        </div>
+        <span className={styles.chevron}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </span>
+      </div>
+
+      {/* achievements */}
+      <div className={styles.secHead}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tma-fg-dim)" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
+          <path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.4 6.8 19.2l1-5.9L3.5 9.2l5.9-.8L12 3z" />
+        </svg>
+        ACHIEVEMENTS
+      </div>
+      <div className={styles.card} style={{ padding: "14px 10px 6px" }}>
+        <div className={styles.achieveStrip}>
+          {(profile?.achievements ?? []).map((a) => {
+            const color = BADGE_COLORS[a.key] ?? "#8b7ff5";
+            return (
+              <div key={a.key} className={`${styles.badge} ${a.earned ? "" : styles.locked}`}>
+                <div
+                  className={styles.hex}
+                  style={{
+                    background: `${color}1f`,
+                    boxShadow: a.earned ? `inset 0 0 24px ${color}44` : undefined,
+                  }}
+                >
+                  <BadgeIcon k={a.key} color={color} />
+                </div>
+                <div className={styles.badgeName} style={{ color }}>
+                  {a.name}
+                </div>
+                <div className={styles.badgeDesc}>{a.desc}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* settings */}
+      <div className={styles.menuCard}>
+        <button className={styles.menuRow}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tma-fg-dim)" strokeWidth="1.7" strokeLinecap="round" aria-hidden>
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19 12a7 7 0 0 0-.2-1.6l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.8-1.6L13.3 2h-2.6l-.4 2.9a7 7 0 0 0-2.8 1.6l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .5.1 1.1.2 1.6l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.8 1.6l.4 2.9h2.6l.4-2.9a7 7 0 0 0 2.8-1.6l2.3 1 2-3.4-2-1.5c.1-.5.2-1 .2-1.6z" />
+          </svg>
+          settings
+          <span className={styles.menuChevron}>›</span>
+        </button>
+        <button className={styles.menuRow}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tma-fg-dim)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 3l8 3v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-3z" />
+            <path d="M12 8v4M12 15.5v.5" />
+          </svg>
+          privacy &amp; security
+          <span className={styles.menuChevron}>›</span>
+        </button>
+        <a href="https://t.me/frenpitch_bot" className={styles.menuRow} style={{ textDecoration: "none" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tma-fg-dim)" strokeWidth="1.7" strokeLinecap="round" aria-hidden>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.6c0 1.6-2.4 2-2.4 3.4M12 17v.5" />
+          </svg>
+          help &amp; support
+          <span className={styles.menuChevron}>›</span>
+        </a>
       </div>
     </>
   );
