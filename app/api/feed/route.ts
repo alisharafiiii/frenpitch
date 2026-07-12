@@ -9,17 +9,25 @@ import {
   normalizeScoreUpdate,
 } from "@/app/lib/server/normalize";
 import { record } from "@/app/lib/server/recorder";
+import { resolveFollowedMatch } from "@/app/lib/server/droid";
 import type { MatchEvent, Odds } from "@/app/types";
 
 export const dynamic = "force-dynamic";
 
 /** GET /api/feed — one merged SSE stream for the browser (and the droid).
  *  upstream odds + scores streams → record raw → normalize → forward.
- *  the txline api token stays server-side; clients only ever see this route. */
+ *  the txline api token stays server-side; clients only ever see this route.
+ *
+ *  ?user={tgId} — droid mode: filter to that user's followed match
+ *  (pinned via /api/droid/follow, or auto = latest open pick). the filter
+ *  re-resolves every 60s so retargeting from the app applies live, and
+ *  the firmware stays dumb — it just renders whatever arrives. */
 export async function GET(request: Request) {
   if (!getApiToken()) {
     return new Response("no api token — replay mode", { status: 503 });
   }
+
+  const followUser = new URL(request.url).searchParams.get("user");
 
   const encoder = new TextEncoder();
   const lastOdds = new Map<string, Odds>(); // fixtureId → previous odds (for deltas)
@@ -39,8 +47,24 @@ export async function GET(request: Request) {
       };
       request.signal.addEventListener("abort", close);
 
+      // droid filter: null = pass everything (browser / no target yet)
+      let followMatchId: string | null = null;
+      if (followUser) {
+        const refresh = async () => {
+          try {
+            followMatchId = await resolveFollowedMatch(followUser);
+          } catch {
+            /* keep the last known target */
+          }
+        };
+        await refresh();
+        const timer = setInterval(refresh, 60_000);
+        request.signal.addEventListener("abort", () => clearInterval(timer));
+      }
+
       const send = (e: MatchEvent) => {
         if (closed) return;
+        if (followUser && followMatchId && e.matchId !== followMatchId) return;
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`));
       };
 

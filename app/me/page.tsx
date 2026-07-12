@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useTgUser } from "@/app/lib/useTgUser";
 import { useApi } from "@/app/lib/useApi";
+import { api } from "@/app/lib/api";
+import type { Match } from "@/app/types";
 import { Avatar } from "@/app/components/Avatar";
 import {
   IconBars,
@@ -37,6 +39,64 @@ const BADGE_COLORS: Record<string, string> = {
   tournamenter: "#60a5fa",
   frens_united: "#8b7ff5",
 };
+
+interface FollowState {
+  setting: { mode: "auto" | "match"; matchId?: string; matchLabel?: string };
+  resolvedMatchId: string | null;
+}
+
+/** droid "following" selector — auto (latest pick) or pinned fixture.
+ *  saving retargets the droid instantly via server-side feed filtering. */
+function DroidFollow() {
+  const { data: follow, refresh } = useApi<FollowState>("/api/droid/follow");
+  const { data: fx } = useApi<{ matches: Match[] }>("/api/fixtures");
+  const [saving, setSaving] = useState(false);
+
+  const matches = (fx?.matches ?? []).filter((m) => m.status !== "ft").slice(0, 12);
+  const value =
+    follow?.setting.mode === "match" ? String(follow.setting.matchId) : "auto";
+
+  const onChange = async (v: string) => {
+    setSaving(true);
+    try {
+      if (v === "auto") {
+        await api("/api/droid/follow", { method: "POST", body: { mode: "auto" } });
+      } else {
+        const m = matches.find((x) => String(x.id) === v);
+        await api("/api/droid/follow", {
+          method: "POST",
+          body: { mode: "match", matchId: v, matchLabel: m ? `${m.home}–${m.away}` : undefined },
+        });
+      }
+      refresh();
+    } catch {
+      /* keep old selection on failure */
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className={styles.followRow}>
+      <span className={styles.followLabel}>following</span>
+      <select
+        className={styles.followSelect}
+        value={value}
+        disabled={saving}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="auto">auto — my latest pick</option>
+        {matches.map((m) => (
+          <option key={m.id} value={String(m.id)}>
+            {m.home} vs {m.away}
+            {m.status === "live" || m.status === "ht"
+              ? ` · live ${m.status === "ht" ? "ht" : `${m.minute}'`}`
+              : ` · ${new Date(m.kickoffUtc).toISOString().slice(11, 16)} utc`}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 function BadgeIcon({ k, color }: { k: string; color: string }) {
   if (k === "quiz_wizard")
@@ -158,6 +218,7 @@ export default function MePage() {
         <button className={styles.pairBtn}>
           <IconQr size={16} /> pair droid (qr)
         </button>
+        <DroidFollow />
       </div>
 
       {/* wallet */}
