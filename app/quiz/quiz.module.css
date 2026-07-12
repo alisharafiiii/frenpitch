@@ -416,3 +416,16 @@
   padding: 8px 11px;
   flex-shrink: 0;
 }
+
+
+/* module-scoped keyframes (css modules hash animation names —
+   global keyframes never matched) */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

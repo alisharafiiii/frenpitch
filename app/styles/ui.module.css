@@ -166,3 +166,16 @@
   color: var(--tma-fg-dim);
   font-size: 13px;
 }
+
+
+/* module-scoped keyframes (css modules hash animation names —
+   global keyframes never matched) */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

@@ -324,3 +324,11 @@
   margin-left: auto;
   color: var(--tma-fg-muted);
 }
+
+
+/* module-scoped keyframes (css modules hash animation names —
+   global keyframes never matched) */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
