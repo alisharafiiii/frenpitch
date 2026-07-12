@@ -3,8 +3,10 @@ import {
   openStream,
   parseSseData,
   readSseMessages,
+  txGet,
 } from "@/app/lib/server/txline-server";
 import {
+  normalizeFixture,
   normalizeOddsUpdate,
   normalizeScoreUpdate,
 } from "@/app/lib/server/normalize";
@@ -49,10 +51,22 @@ export async function GET(request: Request) {
 
       // droid filter: null = pass everything (browser / no target yet)
       let followMatchId: string | null = null;
+      let followLabels: { home: string; away: string } | null = null;
       if (followUser) {
         const refresh = async () => {
           try {
-            followMatchId = await resolveFollowedMatch(followUser);
+            const next = await resolveFollowedMatch(followUser);
+            if (next && next !== followMatchId) {
+              // team codes for the droid's score strip (events don't carry them)
+              try {
+                const raw = await txGet<Record<string, unknown>[]>("/api/fixtures/snapshot");
+                const m = raw.map(normalizeFixture).find((f) => f && f.id === next);
+                followLabels = m ? { home: m.home, away: m.away } : null;
+              } catch {
+                followLabels = null;
+              }
+            }
+            followMatchId = next;
           } catch {
             /* keep the last known target */
           }
@@ -65,7 +79,8 @@ export async function GET(request: Request) {
       const send = (e: MatchEvent) => {
         if (closed) return;
         if (followUser && followMatchId && e.matchId !== followMatchId) return;
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`));
+        const out = followUser && followLabels ? { ...e, ...followLabels } : e;
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(out)}\n\n`));
       };
 
       const pump = async (

@@ -57,6 +57,9 @@ export interface MatchEvent {
   minute: number;
   scoreHome?: number;
   scoreAway?: number;
+  /** team codes — attached server-side for droid clients */
+  home?: string;
+  away?: string;
   odds?: Odds;
   probs?: Probs;
   /** for odds_move: which outcome moved and by how much */
