@@ -14,7 +14,11 @@ import { getApiToken, txGet } from "./txline-server";
 type Outcome = "home" | "draw" | "away";
 type Raw = Record<string, unknown>;
 
-const FINISHED_PHASES = new Set(["5", "10", "13", "F", "FET", "FPE"]);
+/** verified against real feed (NOR-ENG 2026-07-11):
+ *  finished = Action "game_finalised" (StatusId 100), or StatusId 5/10/13
+ *  (F / FET / FPE). final score lives in Stats["1"] / Stats["2"]. */
+const FINISHED_STATUS = new Set([5, 10, 13, 100]);
+const FINISHED_ACTIONS = new Set(["game_finalised", "match_ended", "finished"]);
 
 function pick<T>(obj: Raw, ...keys: string[]): T | undefined {
   for (const k of keys) {
@@ -23,7 +27,7 @@ function pick<T>(obj: Raw, ...keys: string[]): T | undefined {
   return undefined;
 }
 
-/** best-effort final result from the txline scores snapshot */
+/** final result from the txline scores snapshot */
 async function fetchResult(matchId: string): Promise<Outcome | null> {
   if (!getApiToken()) return null;
   let entries: Raw[];
@@ -34,38 +38,28 @@ async function fetchResult(matchId: string): Promise<Outcome | null> {
   }
   if (!Array.isArray(entries) || entries.length === 0) return null;
 
-  let finished = false;
-  let s1: number | undefined;
-  let s2: number | undefined;
-
-  // walk in Ts order so the latest values win
+  // latest first
   const sorted = [...entries].sort(
-    (a, b) => (pick<number>(a, "Ts") ?? 0) - (pick<number>(b, "Ts") ?? 0)
+    (a, b) => (pick<number>(b, "Ts") ?? 0) - (pick<number>(a, "Ts") ?? 0)
   );
-  for (const e of sorted) {
-    const phase = pick<string | number>(e, "GameState", "gameState", "Phase");
-    if (phase !== undefined && FINISHED_PHASES.has(String(phase).toUpperCase())) {
-      finished = true;
-    }
-    const stats = pick<Record<string, number>>(e, "Stats", "stats");
-    if (stats) {
-      if (stats["1"] !== undefined) s1 = Number(stats["1"]);
-      if (stats["2"] !== undefined) s2 = Number(stats["2"]);
-    }
-    const key = pick<number>(e, "Key", "key");
-    const value = pick<number>(e, "Value", "value");
-    if (key !== undefined && value !== undefined) {
-      if (key % 1000 === 1) s1 = Number(value);
-      if (key % 1000 === 2) s2 = Number(value);
-    }
-    const h = pick<number>(e, "Score1", "HomeScore", "homeScore");
-    const a = pick<number>(e, "Score2", "AwayScore", "awayScore");
-    if (h !== undefined) s1 = Number(h);
-    if (a !== undefined) s2 = Number(a);
-  }
 
-  if (!finished || s1 === undefined || s2 === undefined) return null;
-  return s1 > s2 ? "home" : s1 < s2 ? "away" : "draw";
+  const finished = sorted.some((e) => {
+    const status = Number(pick<number | string>(e, "StatusId") ?? -1);
+    const action = String(pick<string>(e, "Action") ?? "").toLowerCase();
+    return FINISHED_STATUS.has(status) || FINISHED_ACTIONS.has(action);
+  });
+  if (!finished) return null;
+
+  // score from the most recent entry that carries Stats
+  for (const e of sorted) {
+    const stats = pick<Record<string, number>>(e, "Stats", "stats");
+    if (stats && stats["1"] !== undefined && stats["2"] !== undefined) {
+      const s1 = Number(stats["1"]);
+      const s2 = Number(stats["2"]);
+      return s1 > s2 ? "home" : s1 < s2 ? "away" : "draw";
+    }
+  }
+  return null;
 }
 
 /** pay out a single pick against a final outcome */

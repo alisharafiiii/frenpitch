@@ -194,81 +194,64 @@ export function normalizeOddsUpdate(raw: Raw, prev?: Odds): MatchEvent | null {
   };
 }
 
-/** soccer game-phase encoding (txodds spec):
- *  1=NS 2=H1 3=HT 4=H2 5=F 6=WET 7=ET1 8=HTET 9=ET2 10=FET
- *  11=WPE 12=PE 13=FPE 14=I 15=A 16=C */
-const PHASE_EVENT: Record<string, MatchEvent["type"] | undefined> = {
-  "2": "kickoff", H1: "kickoff",
-  "3": "halftime", HT: "halftime",
-  "4": "kickoff", H2: "kickoff",
-  "5": "fulltime", F: "fulltime",
-  "10": "fulltime", FET: "fulltime",
-  "13": "fulltime", FPE: "fulltime",
-};
+/* soccer game-phase encoding (txodds spec):
+ * 1=NS 2=H1 3=HT 4=H2 5=F 6=WET 7=ET1 8=HTET 9=ET2 10=FET
+ * 11=WPE 12=PE 13=FPE 14=I 15=A 16=C · observed live: 100=finalised */
 
-/** stat key encoding: (period * 1000) + base_key
- *  base 1/2 = goals p1/p2 · 3/4 = yellows · 5/6 = reds · 7/8 = corners */
-function statToEvent(key: number): { type: MatchEvent["type"]; team: "home" | "away" } | null {
-  const base = key % 1000;
-  const team: "home" | "away" = base % 2 === 1 ? "home" : "away";
-  if (base === 1 || base === 2) return { type: "goal", team };
-  if (base === 3 || base === 4) return { type: "card_yellow", team };
-  if (base === 5 || base === 6) return { type: "card_red", team };
-  return null; // corners etc — not surfaced in the stadium
-}
-
-/** scores stream payload → MatchEvent
- *  handles both phase changes (gameState) and stat updates (Key/Value or
- *  a Stats map, per the on-chain encoding). raw is always recorded, so
- *  unknown shapes can be re-normalized later. */
+/** scores stream payload → MatchEvent.
+ *  verified against real feed (NOR-ENG 2026-07-11): events carry
+ *  { Action: "goal" | "yellow_card" | "var" | "game_finalised" | ...,
+ *    StatusId: phase id (100 = finalised), Stats: { "1": goals p1, ... },
+ *    Clock: { Seconds }, Participant: 1 | 2 } */
 export function normalizeScoreUpdate(raw: Raw): MatchEvent | null {
   const fixtureId = pick<number | string>(raw, "FixtureId", "fixtureId");
   if (fixtureId === undefined) return null; // keepalive
 
-  const minute = pick<number>(raw, "Minute", "minute", "MatchMinute") ?? 0;
+  const stats = pick<Record<string, number>>(raw, "Stats", "stats");
+  const clock = pick<{ Seconds?: number }>(raw, "Clock");
+  const minute = clock?.Seconds
+    ? Math.min(120, Math.round(clock.Seconds / 60))
+    : (pick<number>(raw, "Minute", "minute") ?? 0);
+
   const base = {
     id: `score-${fixtureId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     matchId: String(fixtureId),
     t: Date.now(),
     minute,
+    ...(stats && stats["1"] !== undefined
+      ? { scoreHome: Number(stats["1"]), scoreAway: Number(stats["2"] ?? 0) }
+      : {}),
     raw,
   };
 
-  // 1. explicit stat update: { Key, Value } — goals/cards
-  const statKey = pick<number>(raw, "Key", "key", "StatKey");
-  if (statKey !== undefined) {
-    const mapped = statToEvent(statKey);
-    if (!mapped) return null;
-    const value = pick<number>(raw, "Value", "value");
-    return {
-      ...base,
-      type: mapped.type,
-      team: mapped.team,
-      ...(mapped.type === "goal" && value !== undefined
-        ? mapped.team === "home"
-          ? { scoreHome: value }
-          : { scoreAway: value }
-        : {}),
-    };
+  const action = String(pick<string>(raw, "Action") ?? "").toLowerCase();
+  const status = Number(pick<number | string>(raw, "StatusId") ?? -1);
+  const participant = Number(pick<number>(raw, "Participant") ?? 0);
+  const team = participant === 2 ? ("away" as const) : ("home" as const);
+
+  if (action.includes("goal") && !action.includes("kick")) {
+    return { ...base, type: "goal", team };
+  }
+  if (action.includes("red_card")) return { ...base, type: "card_red", team };
+  if (action.includes("yellow_card")) return { ...base, type: "card_yellow", team };
+  if (action.includes("var")) return { ...base, type: "var_check" };
+  if (action.includes("penalty_awarded")) return { ...base, type: "penalty_awarded", team };
+  if (
+    action === "game_finalised" ||
+    action === "match_ended" ||
+    status === 100 ||
+    status === 5 ||
+    status === 10 ||
+    status === 13
+  ) {
+    return { ...base, type: "fulltime" };
+  }
+  if (status === 3) return { ...base, type: "halftime" };
+  if (action === "kick_off" || status === 2 || status === 4) {
+    return { ...base, type: "kickoff" };
   }
 
-  // 2. stats map: { Stats: { "1": 2, "2": 1, ... } } — emit current score
-  const stats = pick<Record<string, number>>(raw, "Stats", "stats");
-  if (stats && (stats["1"] !== undefined || stats["2"] !== undefined)) {
-    return {
-      ...base,
-      type: "goal",
-      scoreHome: stats["1"] ?? 0,
-      scoreAway: stats["2"] ?? 0,
-    };
-  }
-
-  // 3. phase change: { GameState: 3 | "HT" | ... }
-  const phase = pick<string | number>(raw, "GameState", "gameState", "GamePhase");
-  if (phase !== undefined && phase !== null) {
-    const type = PHASE_EVENT[String(phase).toUpperCase()];
-    if (type) return { ...base, type };
-  }
-
+  // possession / throw-in noise — no ui event, but score corrections
+  // still flow through when Stats changed (handled via goal above)
   return null;
 }
