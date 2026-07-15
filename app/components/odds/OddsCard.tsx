@@ -161,7 +161,11 @@ export function OddsCard({
         ) : (
           <>
             <span className={styles.timeChip}>
-              {new Date(match.kickoffUtc).toISOString().slice(11, 16)} UTC
+              {new Date().toISOString().slice(0, 10) === match.kickoffUtc.slice(0, 10)
+                ? `${match.kickoffUtc.slice(11, 16)} UTC`
+                : `${new Date(match.kickoffUtc)
+                    .toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })
+                    .toLowerCase()} · ${match.kickoffUtc.slice(11, 16)}`}
             </span>
             <span className={styles.railIcon}>{hasOdds ? <IconTrend /> : <IconClock />}</span>
           </>
