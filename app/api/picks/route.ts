@@ -37,9 +37,10 @@ export async function POST(req: Request) {
   return NextResponse.json({ pick, bankroll: user.bankroll - stake });
 }
 
-/** GET /api/picks — my picks */
+/** GET /api/picks?limit= — my picks, newest first */
 export async function GET(req: Request) {
   const who = identityFromRequest(req);
-  const picks = await getUserPicks(who.id);
+  const limit = Math.min(50, Number(new URL(req.url).searchParams.get("limit")) || 10);
+  const picks = await getUserPicks(who.id, limit);
   return NextResponse.json({ picks });
 }

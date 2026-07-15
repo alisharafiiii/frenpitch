@@ -1,45 +1,55 @@
-# frenpitch droid — flash guide (arduino ide, cores3)
+# frenpitch droid — flash guide (platformio, same route as sauron-eye)
 
-## 1. one-time setup
+the firmware lives in `firmware/` and is built exactly like the jarvis/sauron-eye
+project: platformio + pioarduino espressif32, feetech scs servos on uart1,
+and the same battle-tested cores3 power bring-up (PY32 blind writes, AW9523
+0x83 blind write, BLDO2 rail).
 
-1. install [arduino ide](https://www.arduino.cc/en/software)
-2. settings → additional boards manager urls, add:
-   `https://espressif.github.io/arduino-esp32/package_esp32_index.json`
-3. tools → board → boards manager → search **esp32** → install "esp32 by Espressif Systems"
-4. sketch → include library → manage libraries → install:
-   - **M5Unified**
-   - **ArduinoJson**
-   - **ESP32Servo**
+## 1. configure
 
-## 2. configure
-
-open `frenpitch_droid/frenpitch_droid.ino` and edit the config block:
+edit the top of `firmware/src/main.cpp`:
 
 ```cpp
-const char* WIFI_SSID  = "your wifi name";
-const char* WIFI_PASS  = "your wifi password";
-const char* TG_USER_ID = "1052859174";   // your telegram id
+#define WIFI_SSID  "your wifi name"
+#define WIFI_PASS  "your wifi password"
+#define TG_USER_ID "1052859174"     // your telegram id
 ```
 
-no servo? set `#define HAS_SERVO 0`.
+## 2. flash
 
-## 3. flash
+plug the droid in via usb-c, then:
 
-1. plug in the droid via usb-c
-2. tools → board → **M5CoreS3**
-3. tools → port → pick the usb port (usbserial / wchusbserial)
-4. hit upload (→ arrow)
-
-## 4. use
-
-- boots → connects wifi → joins the live feed
-- which match it follows = app → me tab → droid card → **following** dropdown (auto = your latest pick). change it anytime, droid retargets within ~60s
-- **demo mode for filming**: hold the screen while it boots → scripted match loop (goal → line move → yellow → red → full time), no wifi needed
-
-## switch back to original firmware
-
-your esptool backup restores everything:
-
+```bash
+cd ~/frenpitch/droid/firmware
+pio run -t upload
 ```
-python3 -m esptool write_flash 0x0 stackchan-backup.bin
+
+(same as sauron-eye — if `pio` isn't on PATH it's at `~/.platformio/penv/bin/pio`)
+
+## 3. use
+
+- boots → wifi (country CA, ch 1-13) → joins the live feed → hello nod
+- which match it follows = app → me tab → droid card → **following**
+  (auto = your latest pick). retargets within ~60s, no reflash
+- events: goal strobe + dance, yellow/red card sequences, line-move flashes,
+  var / kickoff / halftime / fulltime — plus idle rotation of face →
+  live 1x2 line → win-prob bar
+
+## demo mode (filming, no wifi)
+
+hold the screen while it boots → scripted match loop:
+goal → line move → yellow → red → full time, on repeat.
+
+## monitor
+
+```bash
+pio device monitor
 ```
+
+servo bring-up logs the power/bus/ping status — same self-heal
+(6 retries, 15s apart) as sauron-eye.
+
+## switch back
+
+- to sauron-eye: flash that repo's firmware the same way
+- to stock: `python3 -m esptool write_flash 0x0 stackchan-backup.bin`

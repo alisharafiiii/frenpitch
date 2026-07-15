@@ -22,6 +22,7 @@ export async function GET(req: Request) {
   const quizCorrect = Number(u.quizCorrect ?? 0);
   const quizAnswered = Number(u.quizAnswered ?? 0);
   const picksWon = Number(u.picksWon ?? 0);
+  const picksLost = Number(u.picksLost ?? 0);
   const winStreak = Number(u.bestWinStreak ?? 0);
   const tournaments = await redis().scard(`user:${who.id}:tours`);
 
@@ -38,6 +39,9 @@ export async function GET(req: Request) {
     level,
     title: titleFor(level),
     points,
+    bankroll: user.bankroll,
+    pnl: Number(u.pnl ?? 0),
+    record: { won: picksWon, lost: picksLost },
     stats: {
       tournaments,
       wins: picksWon,

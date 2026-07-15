@@ -93,6 +93,109 @@
   color: var(--tma-fg-muted);
 }
 
+.pnlLine {
+  font-size: 11px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+/* my picks */
+
+.secCount {
+  font-size: 10px;
+  font-weight: 800;
+  color: #8b7ff5;
+  border: 1px solid rgba(124, 111, 240, 0.4);
+  border-radius: var(--tma-radius-pill);
+  padding: 1px 8px;
+  letter-spacing: 0;
+}
+
+.picksCard {
+  background: #0d0d15;
+  border: 1px solid var(--tma-border);
+  border-radius: 18px;
+  padding: 4px 14px;
+  margin-bottom: 14px;
+}
+
+.pickRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--tma-border);
+}
+
+.pickRow:last-child {
+  border-bottom: none;
+}
+
+.pickMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.pickLabel {
+  font-size: 13.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pickSub {
+  font-size: 11px;
+  color: var(--tma-fg-dim);
+  margin-top: 2px;
+}
+
+.pickRight {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.pickOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--tma-warning);
+}
+
+.pickPotential {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--tma-fg);
+  margin-top: 2px;
+}
+
+.pickWon {
+  font-size: 14px;
+  font-weight: 800;
+  color: #34d399;
+  flex-shrink: 0;
+}
+
+.pickLost {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f87171;
+  flex-shrink: 0;
+}
+
+.moreBtn {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #8b7ff5;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 11px 0;
+}
+
 .statsRow {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

@@ -23,6 +23,9 @@ interface Profile {
   level: number;
   title: string;
   points: number;
+  bankroll: number;
+  pnl: number;
+  record: { won: number; lost: number };
   stats: {
     tournaments: number;
     wins: number;
@@ -32,6 +35,17 @@ interface Profile {
   achievements: { key: string; name: string; desc: string; earned: boolean }[];
 }
 
+interface PickRow {
+  id: string;
+  matchLabel: string;
+  outcome: "home" | "draw" | "away";
+  outcomeLabel: string;
+  lockedOdds: number;
+  stake: number;
+  status: "open" | "won" | "lost";
+  createdAt: number;
+}
+
 const BADGE_COLORS: Record<string, string> = {
   quiz_wizard: "#8b7ff5",
   sharp_shooter: "#34d399",
@@ -39,6 +53,74 @@ const BADGE_COLORS: Record<string, string> = {
   tournamenter: "#60a5fa",
   frens_united: "#8b7ff5",
 };
+
+/** my picks — active bets + settled history */
+function MyPicks() {
+  const { data } = useApi<{ picks: PickRow[] }>("/api/picks?limit=30");
+  const [showAll, setShowAll] = useState(false);
+  const picks = data?.picks ?? [];
+  const active = picks.filter((p) => p.status === "open");
+  const history = picks.filter((p) => p.status !== "open");
+  const shown = showAll ? history : history.slice(0, 5);
+
+  if (picks.length === 0) return null;
+
+  const row = (p: PickRow) => {
+    const payout = Math.round(p.stake * p.lockedOdds);
+    return (
+      <div key={p.id} className={styles.pickRow}>
+        <div className={styles.pickMain}>
+          <div className={styles.pickLabel}>{p.matchLabel || "match"}</div>
+          <div className={styles.pickSub}>
+            {p.outcomeLabel} @ {p.lockedOdds.toFixed(2)} · {p.stake} pts
+          </div>
+        </div>
+        {p.status === "open" ? (
+          <div className={styles.pickRight}>
+            <span className={styles.pickOpen}>
+              <span className={ui.liveDot} /> open
+            </span>
+            <span className={styles.pickPotential}>→ {payout}</span>
+          </div>
+        ) : p.status === "won" ? (
+          <span className={styles.pickWon}>+{payout - p.stake}</span>
+        ) : (
+          <span className={styles.pickLost}>-{p.stake}</span>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <>
+      {active.length > 0 && (
+        <>
+          <div className={styles.secHead}>
+            <IconTarget size={16} color="var(--tma-fg-dim)" /> ACTIVE PICKS
+            <span className={styles.secCount}>{active.length}</span>
+          </div>
+          <div className={styles.picksCard}>{active.map(row)}</div>
+        </>
+      )}
+      {history.length > 0 && (
+        <>
+          <div className={styles.secHead}>
+            <IconBars size={16} color="var(--tma-fg-dim)" /> PICK HISTORY
+            <span className={styles.secCount}>{history.length}</span>
+          </div>
+          <div className={styles.picksCard}>
+            {shown.map(row)}
+            {history.length > 5 && (
+              <button className={styles.moreBtn} onClick={() => setShowAll(!showAll)}>
+                {showAll ? "show less" : `show all ${history.length}`}
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
 
 interface FollowState {
   setting: { mode: "auto" | "match"; matchId?: string; matchLabel?: string };
@@ -156,14 +238,22 @@ export default function MePage() {
             </div>
           </div>
           <div className={styles.pointsChip}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8b7ff5" aria-hidden>
-              <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b7ff5" strokeWidth="1.8" aria-hidden>
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v10M15.5 9.5c-.6-1-1.9-1.5-3.5-1.5-1.8 0-3 .9-3 2.2 0 2.9 6.8 1.4 6.8 4.3 0 1.4-1.4 2.3-3.3 2.3-1.7 0-3-.6-3.6-1.6" strokeLinecap="round" />
             </svg>
             <div>
               <div className={`${styles.pointsValue} ${ui.num}`}>
-                {(profile?.points ?? 0).toLocaleString()}
+                {(profile?.bankroll ?? 0).toLocaleString()}
               </div>
-              <div className={styles.pointsLabel}>your points</div>
+              <div className={styles.pointsLabel}>bankroll</div>
+              <div
+                className={`${styles.pnlLine} ${ui.num}`}
+                style={{ color: (profile?.pnl ?? 0) >= 0 ? "#34d399" : "#f87171" }}
+              >
+                {(profile?.pnl ?? 0) >= 0 ? "+" : ""}
+                {(profile?.pnl ?? 0).toLocaleString()} pnl
+              </div>
             </div>
           </div>
         </div>
@@ -176,8 +266,10 @@ export default function MePage() {
           </div>
           <div className={styles.statCell}>
             <IconTrophy size={22} color="#8b7ff5" />
-            <div className={`${styles.statNum} ${ui.num}`}>{profile?.stats.wins ?? 0}</div>
-            <div className={styles.statCap}>wins</div>
+            <div className={`${styles.statNum} ${ui.num}`}>
+              {profile?.record ? `${profile.record.won}-${profile.record.lost}` : "0-0"}
+            </div>
+            <div className={styles.statCap}>won-lost</div>
           </div>
           <div className={styles.statCell}>
             <IconFire size={22} color="#8b7ff5" />
@@ -195,6 +287,9 @@ export default function MePage() {
           </div>
         </div>
       </div>
+
+      {/* active picks + history */}
+      <MyPicks />
 
       {/* stackchan droid */}
       <div className={styles.secHead}>
