@@ -8,3 +8,4 @@ next-env.d.ts
 target/
 .vercel
 tsconfig.tsbuildinfo
+droid/firmware/src/secrets.h

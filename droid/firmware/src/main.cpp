@@ -30,9 +30,7 @@
 #include <SCServo.h>
 #include <math.h>
 
-#define WIFI_SSID  "YOUR_WIFI_SSID"
-#define WIFI_PASS  "YOUR_WIFI_PASSWORD"
-#define TG_USER_ID "1052859174"                  // telegram id — server filters the feed to your followed match
+#include "secrets.h"   // WIFI_SSID / WIFI_PASS / TG_USER_ID — gitignored, copy secrets.example.h
 #define FEED_HOST  "frenpitch.vercel.app"
 
 // ---- servo power (PY32 io-expander @0x6F, pin0 = "VM EN") ----
