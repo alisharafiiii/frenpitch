@@ -226,6 +226,42 @@ export function extractSnapshotTotals(entries: Raw[]): TotalsMarket | null {
   return market;
 }
 
+/** totals (over/under) stream update → odds_move event carrying totals.
+ *  clean lines only, same rule as the snapshot extractor. */
+export function normalizeTotalsUpdate(raw: Raw): MatchEvent | null {
+  const fixtureId = pick<number | string>(raw, "FixtureId", "fixtureId");
+  if (fixtureId === undefined) return null;
+  const t = pick<string>(raw, "SuperOddsType");
+  if (!t || !t.includes("OVERUNDER")) return null;
+  if (!isFullMatchPeriod(pick<string>(raw, "MarketPeriod"))) return null;
+  const m = String(pick<string>(raw, "MarketParameters") ?? "").match(/line=([\d.]+)/);
+  if (!m) return null;
+  const line = Number(m[1]);
+  if (Math.abs((line * 4) % 2) === 1) return null; // quarter lines skipped
+  const names = (pick<string[]>(raw, "PriceNames") ?? []).map((n) => String(n).toLowerCase());
+  const prices = pick<number[]>(raw, "Prices") ?? [];
+  const iO = names.indexOf("over");
+  const iU = names.indexOf("under");
+  if (iO < 0 || iU < 0 || !prices[iO] || !prices[iU]) return null;
+  const pct = pick<(number | string)[]>(raw, "Pct");
+  return {
+    id: `totals-${fixtureId}-${Date.now()}`,
+    matchId: String(fixtureId),
+    t: Date.now(),
+    type: "odds_move",
+    minute: pick<number>(raw, "Minute", "minute") ?? 0,
+    totals: {
+      line,
+      over: prices[iO] / 1000,
+      under: prices[iU] / 1000,
+      ...(pct && pct[iO] !== undefined
+        ? { overPct: Math.round(Number(pct[iO])), underPct: Math.round(Number(pct[iU])) }
+        : {}),
+    },
+    raw,
+  };
+}
+
 export function normalizeOddsUpdate(raw: Raw, prev?: Odds): MatchEvent | null {
   const fixtureId = pick<number | string>(raw, "FixtureId", "fixtureId");
   if (fixtureId === undefined) return null; // keepalive

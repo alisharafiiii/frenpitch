@@ -67,6 +67,8 @@ export interface MatchEvent {
   away?: string;
   odds?: Odds;
   probs?: Probs;
+  /** over/under line carried on totals odds_move events */
+  totals?: { line: number; over: number; under: number; overPct?: number; underPct?: number };
   /** for odds_move: which outcome moved and by how much */
   outcome?: Outcome;
   delta?: number;

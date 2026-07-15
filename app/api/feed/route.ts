@@ -10,10 +10,28 @@ import {
   normalizeFixture,
   normalizeOddsUpdate,
   normalizeScoreUpdate,
+  normalizeTotalsUpdate,
 } from "@/app/lib/server/normalize";
 import { record } from "@/app/lib/server/recorder";
 import { resolveFollowedMatch } from "@/app/lib/server/droid";
+import { redis } from "@/app/lib/server/db";
 import type { MatchEvent, Odds } from "@/app/types";
+
+/** the stream is the source of truth when snapshots go empty (observed
+ *  2026-07-15: all odds snapshots returned [] while the stream kept
+ *  pricing) — remember every price so /api/fixtures can fall back. */
+function rememberPrices(e: MatchEvent): void {
+  const patch: Record<string, string> = {};
+  if (e.odds) patch.odds = JSON.stringify(e.odds);
+  if (e.probs) patch.probs = JSON.stringify(e.probs);
+  if (e.totals) patch.totals = JSON.stringify(e.totals);
+  if (Object.keys(patch).length === 0) return;
+  patch.ts = String(Date.now());
+  redis()
+    .hset(`match:${e.matchId}:lastOdds`, patch)
+    .then(() => redis().expire(`match:${e.matchId}:lastOdds`, 12 * 3600))
+    .catch(() => {});
+}
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +105,22 @@ export async function GET(request: Request) {
                 const entries = await txGet<Record<string, unknown>[]>(
                   `/api/odds/snapshot/${next}`
                 );
-                const dec = extractSnapshotOdds(entries);
+                let dec = extractSnapshotOdds(entries);
+                if (!dec) {
+                  // snapshot empty — stream-fed memory
+                  const h = await redis().hgetall<Record<string, unknown>>(
+                    `match:${next}:lastOdds`
+                  );
+                  const parse = <T,>(v: unknown): T | undefined => {
+                    if (v === undefined || v === null) return undefined;
+                    if (typeof v === "object") return v as T;
+                    try { return JSON.parse(String(v)) as T; } catch { return undefined; }
+                  };
+                  const odds = parse<Odds>(h?.odds);
+                  if (odds && odds.home > 0) {
+                    dec = { odds, probs: parse<{ home: number; draw: number; away: number }>(h?.probs) };
+                  }
+                }
                 if (dec) {
                   lastOdds.set(next, dec.odds);
                   send({
@@ -141,8 +174,17 @@ export async function GET(request: Request) {
 
       void pump("/api/odds/stream", "odds", (raw) => {
         const fixtureId = String(raw.FixtureId ?? raw.fixtureId ?? "");
+        // totals market? → totals odds_move
+        const totalsEvent = normalizeTotalsUpdate(raw);
+        if (totalsEvent) {
+          rememberPrices(totalsEvent);
+          return totalsEvent;
+        }
         const event = normalizeOddsUpdate(raw, lastOdds.get(fixtureId));
-        if (event?.odds) lastOdds.set(event.matchId, event.odds);
+        if (event?.odds) {
+          lastOdds.set(event.matchId, event.odds);
+          rememberPrices(event);
+        }
         return event;
       });
       void pump("/api/scores/stream", "scores", normalizeScoreUpdate);

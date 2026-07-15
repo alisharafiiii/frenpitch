@@ -130,6 +130,10 @@ export default function HomePage() {
             next.odds = e.odds;
           }
           if (e.probs) next.probs = e.probs;
+          // totals line moves stream too — keep the same line, refresh prices
+          if (e.totals && (!next.totals || e.totals.line === next.totals.line)) {
+            next.totals = e.totals;
+          }
           if (e.scoreHome !== undefined && e.scoreAway !== undefined) {
             next.scoreHome = e.scoreHome;
             next.scoreAway = e.scoreAway;
