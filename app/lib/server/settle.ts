@@ -8,11 +8,21 @@ import { getApiToken, txGet } from "./txline-server";
  *  streaks update, losers eat the stake. runs opportunistically when
  *  anyone opens the app (throttled by a redis lock) + manual /api/settle.
  *
+ *  markets: 1x2 settles on the outcome; totals (over/under) settle on
+ *  total goals vs the locked line — landing exactly on a whole line is
+ *  a PUSH: stake refunded, no pnl, streak untouched.
+ *
  *  match results can also be admin-forced (matchId → outcome) as the
- *  demo-day safety valve; forced results use the same payout path. */
+ *  demo-day safety valve; forced results only resolve 1x2 picks (they
+ *  carry no score), totals wait for real txline data. */
 
 type Outcome = "home" | "draw" | "away";
 type Raw = Record<string, unknown>;
+
+interface MatchResult {
+  outcome: Outcome;
+  totalGoals: number | null; // null = unknown (admin-forced, no score)
+}
 
 /** verified against real feed (NOR-ENG 2026-07-11):
  *  finished = Action "game_finalised" (StatusId 100), or StatusId 5/10/13
@@ -28,7 +38,7 @@ function pick<T>(obj: Raw, ...keys: string[]): T | undefined {
 }
 
 /** final result from the txline scores snapshot */
-async function fetchResult(matchId: string): Promise<Outcome | null> {
+async function fetchResult(matchId: string): Promise<MatchResult | null> {
   if (!getApiToken()) return null;
   let entries: Raw[];
   try {
@@ -56,16 +66,33 @@ async function fetchResult(matchId: string): Promise<Outcome | null> {
     if (stats && stats["1"] !== undefined && stats["2"] !== undefined) {
       const s1 = Number(stats["1"]);
       const s2 = Number(stats["2"]);
-      return s1 > s2 ? "home" : s1 < s2 ? "away" : "draw";
+      return {
+        outcome: s1 > s2 ? "home" : s1 < s2 ? "away" : "draw",
+        totalGoals: s1 + s2,
+      };
     }
   }
   return null;
 }
 
-/** pay out a single pick against a final outcome */
-async function applyResult(p: PickRecord, result: Outcome): Promise<void> {
+/** did this pick win / lose / push against the final result?
+ *  null = cannot resolve yet (totals pick + forced result without score) */
+function grade(p: PickRecord, r: MatchResult): "won" | "lost" | "push" | null {
+  if (p.market === "totals") {
+    if (r.totalGoals === null) return null;
+    const line = Number(p.line);
+    if (!Number.isFinite(line)) return null;
+    if (r.totalGoals === line) return "push"; // whole line landed exactly
+    const overWon = r.totalGoals > line;
+    return (p.outcome === "over") === overWon ? "won" : "lost";
+  }
+  return p.outcome === r.outcome ? "won" : "lost";
+}
+
+/** pay out a single pick */
+async function applyResult(p: PickRecord, verdict: "won" | "lost" | "push"): Promise<void> {
   const userKey = `user:${p.userId}`;
-  if (p.outcome === result) {
+  if (verdict === "won") {
     const payout = Math.round(p.stake * p.lockedOdds);
     await redis().hincrby(userKey, "bankroll", payout);
     await redis().hincrby(userKey, "pnl", payout - p.stake);
@@ -78,6 +105,10 @@ async function applyResult(p: PickRecord, result: Outcome): Promise<void> {
       await redis().hset(userKey, { bestWinStreak: cur });
     }
     await redis().hset(`pick:${p.id}`, { status: "won" });
+  } else if (verdict === "push") {
+    // stake back, nothing else moves
+    await redis().hincrby(userKey, "bankroll", p.stake);
+    await redis().hset(`pick:${p.id}`, { status: "push" });
   } else {
     await redis().hincrby(userKey, "pnl", -p.stake);
     await redis().hincrby(userKey, "picksLost", 1);
@@ -119,17 +150,28 @@ export async function settleAll(opts: { force?: boolean } = {}): Promise<SettleR
   }
 
   for (const [matchId, matchPicks] of byMatch) {
-    // admin-forced result takes precedence, then txline
+    // admin-forced result takes precedence (1x2 only), then txline
     const forced = await redis().get<string>(`match:${matchId}:result`);
-    const result = (forced as Outcome | null) ?? (await fetchResult(matchId));
+    let result: MatchResult | null = null;
+    if (forced === "home" || forced === "draw" || forced === "away") {
+      // forced results carry no score — try to enrich with the real one
+      const real = await fetchResult(matchId);
+      result = { outcome: forced, totalGoals: real?.totalGoals ?? null };
+    } else {
+      result = await fetchResult(matchId);
+    }
     if (!result) continue;
 
-    await redis().set(`match:${matchId}:result`, result, { ex: 7 * 86400 });
+    await redis().set(`match:${matchId}:result`, result.outcome, { ex: 7 * 86400 });
+    let resolvedAny = false;
     for (const p of matchPicks) {
-      await applyResult(p, result);
+      const verdict = grade(p, result);
+      if (!verdict) continue; // totals pick, no score yet
+      await applyResult(p, verdict);
       report.settled++;
+      resolvedAny = true;
     }
-    report.matchesResolved.push(`${matchId}:${result}`);
+    if (resolvedAny) report.matchesResolved.push(`${matchId}:${result.outcome}`);
   }
 
   return report;

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { Match, Outcome } from "@/app/types";
+import type { Match } from "@/app/types";
+import type { Selection } from "@/app/components/odds/OddsCard";
 import ui from "@/app/styles/ui.module.css";
 import styles from "./slip.module.css";
 
@@ -9,25 +10,32 @@ const STAKES = [25, 100, 250];
 
 export function PickSlip({
   match,
-  outcome,
+  sel,
   bankroll,
   onConfirm,
   onClose,
 }: {
   match: Match;
-  outcome: Outcome;
+  sel: Selection;
   bankroll: number;
   onConfirm: (stake: number) => void;
   onClose: () => void;
 }) {
   const [stake, setStake] = useState(100);
-  const odds = match.odds[outcome];
+  const odds =
+    sel.market === "totals"
+      ? sel.outcome === "over"
+        ? (match.totals?.over ?? 0)
+        : (match.totals?.under ?? 0)
+      : match.odds[sel.outcome as "home" | "draw" | "away"];
   const label =
-    outcome === "draw"
-      ? "draw"
-      : outcome === "home"
-        ? `${match.homeFlag} ${match.home.toLowerCase()} to win`
-        : `${match.awayFlag} ${match.away.toLowerCase()} to win`;
+    sel.market === "totals"
+      ? `${sel.outcome} ${match.totals?.line} goals · ${match.home.toLowerCase()}–${match.away.toLowerCase()}`
+      : sel.outcome === "draw"
+        ? "draw"
+        : sel.outcome === "home"
+          ? `${match.homeFlag} ${match.home.toLowerCase()} to win`
+          : `${match.awayFlag} ${match.away.toLowerCase()} to win`;
 
   return (
     <>

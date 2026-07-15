@@ -433,6 +433,8 @@
  /Users/nabu/.platformio/packages/framework-arduinoespressif32-libs/esp32s3/include/mbedtls/port/include/aes_alt.h \
  /Users/nabu/.platformio/packages/framework-arduinoespressif32-libs/esp32s3/include/mbedtls/mbedtls/include/mbedtls/entropy.h \
  /Users/nabu/.platformio/packages/framework-arduinoespressif32-libs/esp32s3/include/mbedtls/mbedtls/include/mbedtls/error.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32/libraries/HTTPClient/src/HTTPClient.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32/libraries/NetworkClientSecure/src/NetworkClientSecure.h \
  .pio/libdeps/m5stack-cores3/ArduinoJson/src/ArduinoJson.h \
  .pio/libdeps/m5stack-cores3/ArduinoJson/src/ArduinoJson.hpp \
  .pio/libdeps/m5stack-cores3/ArduinoJson/src/ArduinoJson/Configuration.hpp \
@@ -440,4 +442,19 @@
  lib/FTServo/src/SCSerial.h \
  /Users/nabu/.platformio/packages/framework-arduinoespressif32-libs/esp32s3/include/esp_driver_uart/include/driver/uart.h \
  lib/FTServo/src/SCS.h lib/FTServo/src/INST.h lib/FTServo/src/SMS_STS.h \
- lib/FTServo/src/HLSCL.h src/secrets.h
+ lib/FTServo/src/HLSCL.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/Avatar.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/ColorPalette.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/Face.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/Balloon.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/DrawContext.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/Expression.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/Gaze.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/Drawable.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/BoundingRect.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/Eye.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/Eyeblow.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/Mouth.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/Effect.h \
+ .pio/libdeps/m5stack-cores3/M5Stack-Avatar/src/BatteryIcon.h \
+ src/secrets.h

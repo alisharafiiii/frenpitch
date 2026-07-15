@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Match, MatchEvent, Outcome, Pick } from "@/app/types";
+import type { Match, MatchEvent, Pick, PickOutcome } from "@/app/types";
 import { mockMatches } from "@/app/data/mock-matches";
 import { bus } from "@/app/lib/events";
 import { TxLineClient } from "@/app/lib/txline";
@@ -13,11 +13,13 @@ interface ServerPick {
   id: string;
   matchId: string;
   matchLabel: string;
-  outcome: Outcome;
+  outcome: PickOutcome;
   outcomeLabel: string;
+  market?: "1x2" | "totals";
+  line?: number;
   lockedOdds: number;
   stake: number;
-  status: "open" | "won" | "lost";
+  status: "open" | "won" | "lost" | "push";
 }
 
 function toUiPick(p: ServerPick): Pick {
@@ -28,7 +30,7 @@ function toUiPick(p: ServerPick): Pick {
     livePnl: 0,
   };
 }
-import { OddsCard } from "./components/odds/OddsCard";
+import { OddsCard, type Selection } from "./components/odds/OddsCard";
 import { PickSlip } from "./components/slip/PickSlip";
 import { Avatar } from "./components/Avatar";
 import { IconFire } from "./components/icons";
@@ -40,7 +42,7 @@ export default function HomePage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [bankroll, setBankroll] = useState(720);
   const [myPicks, setMyPicks] = useState<Pick[]>([]);
-  const [slip, setSlip] = useState<{ match: Match; outcome: Outcome } | null>(null);
+  const [slip, setSlip] = useState<{ match: Match; sel: Selection } | null>(null);
 
   const [isLive, setIsLive] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -176,14 +178,27 @@ export default function HomePage() {
 
   const confirmPick = async (stake: number) => {
     if (!slip) return;
-    const { match, outcome } = slip;
+    const { match, sel } = slip;
+    const isTotals = sel.market === "totals";
+    const lockedOdds = isTotals
+      ? sel.outcome === "over"
+        ? (match.totals?.over ?? 0)
+        : (match.totals?.under ?? 0)
+      : match.odds[sel.outcome as "home" | "draw" | "away"];
     const body = {
       matchId: match.id,
       matchLabel: `${match.homeFlag} ${match.home.toLowerCase()} vs ${match.away.toLowerCase()}`,
-      outcome,
-      outcomeLabel:
-        outcome === "draw" ? "draw" : outcome === "home" ? `${match.home.toLowerCase()} ML` : `${match.away.toLowerCase()} ML`,
-      lockedOdds: match.odds[outcome],
+      outcome: sel.outcome,
+      outcomeLabel: isTotals
+        ? `${sel.outcome} ${match.totals?.line} goals`
+        : sel.outcome === "draw"
+          ? "draw"
+          : sel.outcome === "home"
+            ? `${match.home.toLowerCase()} ML`
+            : `${match.away.toLowerCase()} ML`,
+      market: sel.market,
+      ...(isTotals ? { line: match.totals?.line } : {}),
+      lockedOdds,
       stake,
     };
     try {
@@ -351,7 +366,9 @@ export default function HomePage() {
                       ? "sweating 🔥"
                       : p.status === "won"
                         ? "won ✅"
-                        : "lost ❌"}
+                        : p.status === "push"
+                          ? "push ↩"
+                          : "lost ❌"}
                 </span>
               </div>
             ))}
@@ -374,7 +391,7 @@ export default function HomePage() {
           />
         ))}
       {(showAll ? matches : matches.slice(0, 5)).map((m, i) => (
-        <OddsCard key={m.id} match={m} index={i} onPick={(match, outcome) => setSlip({ match, outcome })} />
+        <OddsCard key={m.id} match={m} index={i} onPick={(match, sel) => setSlip({ match, sel })} />
       ))}
       {matches.length > 5 && !showAll && (
         <button className={ui.btnGhost} onClick={() => setShowAll(true)}>
@@ -385,7 +402,7 @@ export default function HomePage() {
       {slip && (
         <PickSlip
           match={slip.match}
-          outcome={slip.outcome}
+          sel={slip.sel}
           bankroll={bankroll}
           onConfirm={confirmPick}
           onClose={() => setSlip(null)}

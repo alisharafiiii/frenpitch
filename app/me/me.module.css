@@ -190,6 +190,13 @@
   flex-shrink: 0;
 }
 
+.pickPush {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--tma-fg-muted);
+  flex-shrink: 0;
+}
+
 .moreBtn {
   width: 100%;
   background: transparent;

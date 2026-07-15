@@ -2,6 +2,9 @@
 
 export type Outcome = "home" | "draw" | "away";
 
+/** every bettable selection: 1x2 sides or totals sides */
+export type PickOutcome = Outcome | "over" | "under";
+
 export interface Odds {
   home: number;
   draw: number;
@@ -32,6 +35,8 @@ export interface Match {
   odds: Odds;
   oddsDelta: Partial<Record<Outcome, number>>; // move over last window
   probs?: Probs;
+  /** over/under total goals — the most balanced clean line from txline */
+  totals?: { line: number; over: number; under: number; overPct?: number; underPct?: number };
 }
 
 /** Normalized event object — the ONE shape every client consumes:
@@ -92,12 +97,15 @@ export interface Pick {
   id: string;
   matchId: string;
   matchLabel: string;
-  outcome: Outcome;
+  outcome: PickOutcome;
   outcomeLabel: string;
+  /** "1x2" (default) or "totals" (over/under goals) */
+  market?: "1x2" | "totals";
+  line?: number;
   lockedOdds: number;
   currentOdds: number;
   stake: number; // points
-  status: "upcoming" | "live" | "won" | "lost";
+  status: "upcoming" | "live" | "won" | "lost" | "push";
   livePnl: number;
 }
 

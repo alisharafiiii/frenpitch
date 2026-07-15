@@ -29,7 +29,10 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <SCServo.h>
+#include <Avatar.h>
 #include <math.h>
+
+using namespace m5avatar;
 
 #include "secrets.h"   // WIFI_SSID / WIFI_PASS / TG_USER_ID — gitignored, copy secrets.example.h
 #define FEED_HOST  "frenpitch.vercel.app"
@@ -147,21 +150,52 @@ struct MatchState {
 } match;
 
 static Mood mood = M_IDLE;
-static uint32_t moodUntil = 0, lastBlink = 0, idleFlip = 0;
-static bool blinking = false, demoMode = false;
+static uint32_t moodUntil = 0, idleFlip = 0;
+static bool demoMode = false;
 static int idleFrame = 0;   // 0 face · 1 odds line · 2 prob bar
 
-// ================= LED dot-matrix renderer =================
-// 8px cells, r=3 round dots → reads as a physical LED panel (style C)
-static const int CELL = 8, DOTR = 3;
-static void dotAt(int cx, int cy, uint16_t col) { M5.Display.fillCircle(cx * CELL + CELL / 2, cy * CELL + CELL / 2, DOTR, col); }
-static void dotRing(int cx, int cy, int r, uint16_t col) {
-  for (int y = -r; y <= r; y++) for (int x = -r; x <= r; x++) {
-    int d2 = x * x + y * y;
-    if (d2 <= r * r && d2 >= (r - 1) * (r - 1)) dotAt(cx + x, cy + y, col);
+// ================= face: stock m5stack-avatar =================
+// the official stackchan face — smooth vector eyes, auto-blink,
+// breathing. football moments are custom overlay frames: we suspend
+// the avatar's draw task, own the screen, then hand it back.
+static Avatar avatar;
+static bool avatarUp = false;
+
+static void applyMood() {
+  if (!avatarUp) return;
+  switch (mood) {
+    case M_JOY:    avatar.setExpression(Expression::Happy);   break;
+    case M_LOST:   avatar.setExpression(Expression::Sad);     break;
+    case M_SHOCK:  avatar.setExpression(Expression::Angry);   break;
+    case M_SQUINT: avatar.setExpression(Expression::Doubt);   break;
+    case M_SLEEPY: avatar.setExpression(Expression::Sleepy);  break;
+    default:       avatar.setExpression(Expression::Neutral);
   }
 }
-static void dotHLine(int x0, int x1, int y, uint16_t col) { for (int x = x0; x <= x1; x++) dotAt(x, y, col); }
+
+// take the screen for a custom frame / give it back
+static void frameBegin() { if (avatarUp) avatar.suspend(); delay(30); }
+static void frameEnd()   { if (avatarUp) { applyMood(); avatar.resume(); } }
+
+// score lives in the avatar's speech balloon while the face is up
+static void updateBalloon() {
+  if (!avatarUp) return;
+  static char last[48] = "";
+  char buf[48] = "";
+  if (match.live) {
+    snprintf(buf, sizeof(buf), "%s %d-%d %s  %d'", match.home, match.scoreH, match.scoreA, match.away, match.minute);
+  } else if (match.oddsH > 0) {
+    snprintf(buf, sizeof(buf), "%s %.2f  x %.2f  %s %.2f", match.home, match.oddsH, match.oddsD, match.away, match.oddsA);
+  }
+  if (strcmp(buf, last) != 0) {
+    strlcpy(last, buf, sizeof(last));
+    avatar.setSpeechText(buf);
+  }
+}
+
+// dot helpers still used by the custom frames (prob bar)
+static const int CELL = 8, DOTR = 3;
+static void dotAt(int cx, int cy, uint16_t col) { M5.Display.fillCircle(cx * CELL + CELL / 2, cy * CELL + CELL / 2, DOTR, col); }
 static void centerText(const char* s, int y, uint16_t col, int size) {
   M5.Display.setTextSize(size);
   M5.Display.setTextDatum(middle_center);
@@ -169,64 +203,97 @@ static void centerText(const char* s, int y, uint16_t col, int size) {
   M5.Display.drawString(s, M5.Display.width() / 2, y);
 }
 
-// ================= faces =================
-static const int EL = 13, ER = 26, EY = 11, MY = 21;   // eye/mouth grid anchors
-
-static void faceIdle(bool blink) {
-  if (blink) { dotHLine(EL - 3, EL + 3, EY, C_GREEN); dotHLine(ER - 3, ER + 3, EY, C_GREEN); }
-  else       { dotRing(EL, EY, 3, C_GREEN); dotRing(ER, EY, 3, C_GREEN); }
-  dotHLine(17, 22, MY, C_GREEN);
-}
-static void faceJoy() {          // caret eyes + big smile
-  for (int i = 0; i <= 3; i++) {
-    dotAt(EL - i, EY - 2 + i, C_GREEN); dotAt(EL + i, EY - 2 + i, C_GREEN);
-    dotAt(ER - i, EY - 2 + i, C_GREEN); dotAt(ER + i, EY - 2 + i, C_GREEN);
-  }
-  dotHLine(15, 24, MY, C_GREEN);
-  dotAt(14, MY - 1, C_GREEN); dotAt(25, MY - 1, C_GREEN);
-  dotAt(13, MY - 2, C_GREEN); dotAt(26, MY - 2, C_GREEN);
-}
-static void faceLost() {         // droop + frown
-  dotHLine(EL - 3, EL + 3, EY, C_PURPLE); dotAt(EL - 3, EY + 1, C_PURPLE); dotAt(EL + 3, EY + 1, C_PURPLE);
-  dotHLine(ER - 3, ER + 3, EY, C_PURPLE); dotAt(ER - 3, EY + 1, C_PURPLE); dotAt(ER + 3, EY + 1, C_PURPLE);
-  dotHLine(16, 23, MY + 1, C_PURPLE); dotAt(15, MY + 2, C_PURPLE); dotAt(24, MY + 2, C_PURPLE);
-}
-static void faceShock() { dotRing(EL, EY, 4, C_RED); dotRing(ER, EY, 4, C_RED); dotRing(19, MY, 2, C_RED); }
-static void faceSquint() {
-  dotHLine(EL - 3, EL + 3, EY, C_AMBER); dotHLine(ER - 3, ER + 3, EY, C_AMBER);
-  dotHLine(17, 22, MY, C_AMBER);
-}
-static void faceSleepy() {
-  dotHLine(EL - 3, EL + 3, EY, C_BLUE); dotHLine(ER - 3, ER + 3, EY, C_BLUE);
-  dotHLine(17, 22, MY, C_BLUE);
-  centerText("z z z", 34, C_BLUE, 2);
-}
-
 // ================= frames =================
+
+// mini flags: 3 vertical color bands per country — reads instantly at 24px
+struct FlagDef { const char* code; uint16_t a, b, c; };
+static FlagDef FLAG_TABLE[40];
+static int FLAG_N = 0;
+static void addFlag(const char* code, uint32_t a, uint32_t b, uint32_t c) {
+  FLAG_TABLE[FLAG_N++] = {
+    code,
+    M5.Display.color565((a >> 16) & 255, (a >> 8) & 255, a & 255),
+    M5.Display.color565((b >> 16) & 255, (b >> 8) & 255, b & 255),
+    M5.Display.color565((c >> 16) & 255, (c >> 8) & 255, c & 255),
+  };
+}
+static void initFlags() {
+  addFlag("NOR", 0xEF2B2D, 0xFFFFFF, 0x002868);
+  addFlag("ENG", 0xFFFFFF, 0xCE1124, 0xFFFFFF);
+  addFlag("FRA", 0x0055A4, 0xFFFFFF, 0xEF4135);
+  addFlag("ESP", 0xAA151B, 0xF1BF00, 0xAA151B);
+  addFlag("BRA", 0x009C3B, 0xFFDF00, 0x002776);
+  addFlag("ARG", 0x74ACDF, 0xFFFFFF, 0x74ACDF);
+  addFlag("GER", 0x000000, 0xDD0000, 0xFFCE00);
+  addFlag("ITA", 0x009246, 0xFFFFFF, 0xCE2B37);
+  addFlag("POR", 0x006600, 0xFF0000, 0xFF0000);
+  addFlag("NED", 0xAE1C28, 0xFFFFFF, 0x21468B);
+  addFlag("BEL", 0x000000, 0xFDDA24, 0xEF3340);
+  addFlag("CRO", 0xFF0000, 0xFFFFFF, 0x171796);
+  addFlag("MAR", 0xC1272D, 0x006233, 0xC1272D);
+  addFlag("JAP", 0xFFFFFF, 0xBC002D, 0xFFFFFF);
+  addFlag("SOU", 0xFFFFFF, 0x0047A0, 0xCD2E3A);
+  addFlag("USA", 0xB22234, 0xFFFFFF, 0x3C3B6E);
+  addFlag("MEX", 0x006847, 0xFFFFFF, 0xCE1126);
+  addFlag("CAN", 0xFF0000, 0xFFFFFF, 0xFF0000);
+  addFlag("URU", 0x74ACDF, 0xFFFFFF, 0x74ACDF);
+  addFlag("COL", 0xFCD116, 0x003893, 0xCE1126);
+  addFlag("SEN", 0x00853F, 0xFDEF42, 0xE31B23);
+  addFlag("GHA", 0xCE1126, 0xFCD116, 0x006B3F);
+  addFlag("AUS", 0x00008B, 0xFFFFFF, 0xFF0000);
+  addFlag("VIE", 0xDA251D, 0xFFFF00, 0xDA251D);
+  addFlag("MYA", 0xFECB00, 0x34B233, 0xEA2839);
+  addFlag("IND", 0xFF9933, 0xFFFFFF, 0x138808);
+  addFlag("NEW", 0x00247D, 0xFFFFFF, 0xCC142B);
+}
+static void drawFlag(int x, int y, int w, int h, const char* code) {
+  for (int i = 0; i < FLAG_N; i++) {
+    if (!strcmp(FLAG_TABLE[i].code, code)) {
+      int band = w / 3;
+      M5.Display.fillRect(x, y, band, h, FLAG_TABLE[i].a);
+      M5.Display.fillRect(x + band, y, band, h, FLAG_TABLE[i].b);
+      M5.Display.fillRect(x + 2 * band, y, w - 2 * band, h, FLAG_TABLE[i].c);
+      M5.Display.drawRect(x, y, w, h, C_DIM);
+      return;
+    }
+  }
+  // unknown team: neutral globe dot
+  M5.Display.fillCircle(x + w / 2, y + h / 2, h / 2, C_DIM);
+}
+
+// fake-bold: draw twice with 1px offset
+static void boldText(const char* s, int x, int y, uint16_t col, int size, uint8_t datum) {
+  M5.Display.setTextSize(size);
+  M5.Display.setTextDatum(datum);
+  M5.Display.setTextColor(col, C_BG);
+  M5.Display.drawString(s, x, y);
+  M5.Display.drawString(s, x + 1, y);
+}
+
 static void drawScoreStrip() {
-  char buf[36];
-  snprintf(buf, sizeof(buf), "%s %d-%d %s", match.home, match.scoreH, match.scoreA, match.away);
-  M5.Display.setTextSize(2);
-  M5.Display.setTextDatum(top_center);
-  M5.Display.setTextColor(match.live ? C_GREEN : C_DIM, C_BG);
-  M5.Display.drawString(buf, M5.Display.width() / 2, 2);
+  const int H = 30, FW = 34, FH = 20, cy = 5;
+  int W = M5.Display.width();
+  M5.Display.fillRect(0, 0, W, H, C_BG);
+
+  char score[10];
+  snprintf(score, sizeof(score), "%d-%d", match.scoreH, match.scoreA);
+
+  // center: big bold score
+  boldText(score, W / 2, 2, match.live ? C_GREEN : C_DIM, 3, top_center);
+
+  // left: flag + bold code · right: code + flag
+  drawFlag(6, cy, FW, FH, match.home);
+  boldText(match.home, 6 + FW + 8, 6, C_GREEN, 2, top_left);
+  drawFlag(W - 6 - FW, cy, FW, FH, match.away);
+  boldText(match.away, W - 6 - FW - 8, 6, C_PURPLE, 2, top_right);
+
+  // minute under the score, amber
   if (match.live && match.minute > 0) {
     char m[8]; snprintf(m, sizeof(m), "%d'", match.minute);
-    M5.Display.setTextDatum(top_right);
+    M5.Display.setTextSize(1);
+    M5.Display.setTextDatum(top_center);
     M5.Display.setTextColor(C_AMBER, C_BG);
-    M5.Display.drawString(m, M5.Display.width() - 6, 2);
-  }
-}
-static void drawFace() {
-  M5.Display.fillScreen(C_BG);
-  drawScoreStrip();
-  switch (mood) {
-    case M_JOY:    faceJoy();    break;
-    case M_LOST:   faceLost();   break;
-    case M_SHOCK:  faceShock();  break;
-    case M_SQUINT: faceSquint(); break;
-    case M_SLEEPY: faceSleepy(); break;
-    default:       faceIdle(blinking);
+    M5.Display.drawString(m, W / 2, 26);
   }
 }
 static void drawOddsLine() {
@@ -332,43 +399,44 @@ static void ticker(const char* l1, const char* l2, uint16_t col) {
   delay(2200);
 }
 static void seqGoal() {
+  frameBegin();
   soundGoal();
   strobe(C_GREEN, "GOAL", 3);
-  mood = M_JOY; drawFace();
   gReq = 5;                        // dance (motionTask)
-  char say[64];
-  snprintf(say, sizeof(say), "gooooal! %s %d, %s %d", match.home, match.scoreH, match.away, match.scoreA);
-  speak(say);
-  delay(400);
   char buf[36]; snprintf(buf, sizeof(buf), "%s %d-%d %s", match.home, match.scoreH, match.scoreA, match.away);
   char m[8]; snprintf(m, sizeof(m), "%d'", match.minute);
   ticker(buf, m, C_GREEN);
-  moodUntil = millis() + 6000;
+  mood = M_JOY; moodUntil = millis() + 8000;
+  frameEnd();                      // avatar returns wearing Happy
+  char say[64];
+  snprintf(say, sizeof(say), "gooooal! %s %d, %s %d", match.home, match.scoreH, match.away, match.scoreA);
+  speak(say);
 }
 static void seqYellow() {
+  frameBegin();
   soundCard();
   M5.Display.fillScreen(C_BG);
   M5.Display.fillRoundRect(130, 60, 60, 90, 6, C_AMBER);   // card up
   delay(900);
-  mood = M_SQUINT; drawFace();
-  speak("yellow card. careful now");
-  delay(400);
   char m[8]; snprintf(m, sizeof(m), "%d'", match.minute);
   ticker("CAUTION", m, C_AMBER);
-  moodUntil = millis() + 5000;
+  mood = M_SQUINT; moodUntil = millis() + 6000;
+  frameEnd();                      // avatar returns wearing Doubt
+  speak("yellow card. careful now");
 }
 static void seqRed() {
+  frameBegin();
   soundRed();
   strobe(C_RED, "RED", 2);
-  mood = M_SHOCK; drawFace();
   gReq = 3;                        // headshake
-  speak("red card! he is off!");
-  delay(400);
   char m[8]; snprintf(m, sizeof(m), "%d'", match.minute);
   ticker("SENT OFF", m, C_RED);
-  moodUntil = millis() + 6000;
+  mood = M_SHOCK; moodUntil = millis() + 8000;
+  frameEnd();                      // avatar returns wearing Angry
+  speak("red card! he is off!");
 }
 static void seqOddsMove(float from, float to, const char* team) {
+  frameBegin();
   soundNotify();
   char buf[36];
   snprintf(buf, sizeof(buf), "%s %.2f>%.2f %s", team, from, to, to < from ? "v" : "^");
@@ -382,6 +450,7 @@ static void seqOddsMove(float from, float to, const char* team) {
     delay(140);
   }
   idleFrame = 1; idleFlip = millis();
+  drawOddsLine();                  // land on the full line frame (still suspended)
 }
 
 // ================= sse feed =================
@@ -417,18 +486,34 @@ static void handleEvent(JsonDocument& doc) {
   else if (!strcmp(type, "goal") || !strcmp(type, "own_goal")) { match.live = true; seqGoal(); }
   else if (!strcmp(type, "card_yellow")) { match.live = true; seqYellow(); }
   else if (!strcmp(type, "card_red"))    { match.live = true; seqRed(); }
-  else if (!strcmp(type, "var_check"))   { soundNotify(); mood = M_SQUINT; moodUntil = millis() + 4000; ticker("VAR CHECK", "", C_AMBER); }
-  else if (!strcmp(type, "kickoff"))     { match.live = true; soundNotify(); gReq = 1; speak("kickoff! we are live"); ticker("KICKOFF", "", C_GREEN); }
-  else if (!strcmp(type, "halftime"))    { mood = M_SLEEPY; moodUntil = millis() + 15000; }
+  else if (!strcmp(type, "var_check")) {
+    frameBegin();
+    soundNotify();
+    ticker("VAR CHECK", "", C_AMBER);
+    mood = M_SQUINT; moodUntil = millis() + 5000;
+    frameEnd();
+  }
+  else if (!strcmp(type, "kickoff")) {
+    match.live = true;
+    frameBegin();
+    soundNotify();
+    ticker("KICKOFF", "", C_GREEN);
+    frameEnd();
+    gReq = 1;
+    speak("kickoff! we are live");
+  }
+  else if (!strcmp(type, "halftime"))    { mood = M_SLEEPY; moodUntil = millis() + 15000; applyMood(); }
   else if (!strcmp(type, "fulltime")) {
     match.live = false;
+    frameBegin();
+    char buf[36]; snprintf(buf, sizeof(buf), "%s %d-%d %s", match.home, match.scoreH, match.scoreA, match.away);
+    ticker("FULL TIME", buf, C_PURPLE);
+    mood = M_IDLE;
+    frameEnd();
+    gReq = 2;                      // nod goodnight
     char say[64];
     snprintf(say, sizeof(say), "full time. %s %d, %s %d", match.home, match.scoreH, match.away, match.scoreA);
     speak(say);
-    char buf[36]; snprintf(buf, sizeof(buf), "%s %d-%d %s", match.home, match.scoreH, match.scoreA, match.away);
-    ticker("FULL TIME", buf, C_PURPLE);
-    gReq = 2;                      // nod goodnight
-    mood = M_IDLE;
   }
 }
 
@@ -453,6 +538,37 @@ static void feedPoll() {
   }
 }
 
+// ================= expression showcase (tap the screen) =================
+// stock avatar expressions back to back, then the football frames
+static void showcaseExpr(const char* name, Expression e) {
+  avatar.setExpression(e);
+  avatar.setSpeechText(name);
+  delay(1800);
+}
+
+static void runShowcase() {
+  if (!avatarUp) return;
+  showcaseExpr("neutral", Expression::Neutral);
+  showcaseExpr("happy - goal", Expression::Happy);
+  showcaseExpr("sad - pick lost", Expression::Sad);
+  showcaseExpr("angry - red card", Expression::Angry);
+  showcaseExpr("doubt - var check", Expression::Doubt);
+  showcaseExpr("sleepy - halftime", Expression::Sleepy);
+  avatar.setSpeechText("");
+  // football frames
+  avatar.suspend(); delay(30);
+  strobe(C_GREEN, "GOAL", 2);
+  M5.Display.fillScreen(C_BG);
+  M5.Display.fillRoundRect(130, 60, 60, 90, 6, C_AMBER); delay(900); // card up
+  strobe(C_RED, "RED", 2);
+  drawOddsLine(); delay(1500);
+  drawProbBar(); delay(1500);
+  mood = M_IDLE;
+  applyMood();
+  avatar.resume();
+  gReq = 2;                        // finish with a nod
+}
+
 // ================= demo mode (filming) =================
 static void runDemoStep() {
   static int step = 0;
@@ -469,7 +585,10 @@ static void runDemoStep() {
     case 3: match.minute = 55; seqYellow(); next = millis() + 8000; break;
     case 4: match.minute = 70; seqRed(); next = millis() + 8000; break;
     case 5: match.minute = 90; match.scoreA = 1;
-            ticker("FULL TIME", "NOR 1-1 ENG", C_PURPLE); next = millis() + 6000;
+            frameBegin();
+            ticker("FULL TIME", "NOR 1-1 ENG", C_PURPLE);
+            frameEnd();
+            next = millis() + 6000;
             match.scoreH = 0; match.scoreA = 0; break;
   }
   step++;
@@ -496,6 +615,7 @@ void setup() {
   C_PURPLE = M5.Display.color565(139, 127, 245);
   C_BLUE   = M5.Display.color565(90, 169, 255);
   C_DIM    = M5.Display.color565(40, 44, 58);
+  initFlags();
 
   // motion runs on its own task — the render loop NEVER blocks on servos,
   // and only the render loop touches M5.Display (sauron lesson #2)
@@ -515,48 +635,67 @@ void setup() {
   uint32_t patience = demoMode ? 12000 : 20000;
   while (WiFi.status() != WL_CONNECTED && millis() - t0 < patience) delay(200);
 
-  if (demoMode) { delay(400); return; }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    banner("frenpitch droid", "joining the feed...", C_GREEN);
-    feedConnect();
-    gReq = 2;                      // hello nod
-  } else {
-    banner("no wifi", "falling back to demo", C_RED);
-    demoMode = true;
+  if (!demoMode) {
+    if (WiFi.status() == WL_CONNECTED) {
+      banner("frenpitch droid", "joining the feed...", C_GREEN);
+      feedConnect();
+      gReq = 2;                    // hello nod
+    } else {
+      banner("no wifi", "falling back to demo", C_RED);
+      demoMode = true;
+    }
+    delay(900);
   }
-  delay(900);
+
+  // the stock stackchan face takes over from here — auto-blink,
+  // breathing, expression per mood, score/odds in the speech balloon
+  avatar.init();
+  avatarUp = true;
+  applyMood();
 }
 
 void loop() {
   M5.update();
+
+  // tap the screen (or BtnA) → expression showcase, back to back
+  if (M5.Touch.getCount() > 0 || M5.BtnA.wasPressed()) {
+    static uint32_t lastShow = 0;
+    if (millis() - lastShow > 3000) {   // debounce a full tap-session
+      lastShow = millis();
+      runShowcase();
+      idleFlip = millis(); idleFrame = 0;
+    }
+  }
 
   if (demoMode) runDemoStep();
   else feedPoll();
 
   uint32_t now = millis();
 
-  if (mood != M_IDLE && moodUntil > 0 && now > moodUntil) { mood = M_IDLE; moodUntil = 0; }
-
-  // blink every ~4s
-  if (mood == M_IDLE && idleFrame == 0 && now - lastBlink > 4000) {
-    blinking = true; drawFace(); delay(120);
-    blinking = false; lastBlink = now;
+  // temp mood expiry → back to Neutral (avatar handles blink + breathing)
+  if (mood != M_IDLE && moodUntil > 0 && now > moodUntil) {
+    mood = M_IDLE; moodUntil = 0; applyMood();
   }
 
-  // idle rotation: face 8s → live line 4s → prob bar 4s
-  if (now - idleFlip > (idleFrame == 0 ? 8000UL : 4000UL)) {
+  // idle rotation: avatar face 12s → live line 4s → prob bar 4s
+  if (now - idleFlip > (idleFrame == 0 ? 12000UL : 4000UL)) {
+    int prev = idleFrame;
     idleFrame = (idleFrame + 1) % 3;
     if (idleFrame > 0 && match.oddsH <= 0 && !match.live) idleFrame = 0;
     idleFlip = now;
-    switch (idleFrame) {
-      case 1: drawOddsLine(); break;
-      case 2: drawProbBar();  break;
-      default: drawFace();
+    if (idleFrame > 0) {
+      if (prev == 0 && avatarUp) { avatar.suspend(); delay(30); }
+      if (idleFrame == 1) drawOddsLine(); else drawProbBar();
+    } else if (prev > 0 && avatarUp) {
+      applyMood();
+      avatar.resume();
     }
-  } else if (idleFrame == 0) {
-    static uint32_t lastDraw = 0;
-    if (now - lastDraw > 1000) { drawFace(); lastDraw = now; }   // keep minute fresh
+  }
+
+  // score / line lives in the speech balloon while the face is up
+  if (idleFrame == 0) {
+    static uint32_t lastBalloon = 0;
+    if (now - lastBalloon > 1000) { updateBalloon(); lastBalloon = now; }
   }
 
   delay(20);

@@ -13,8 +13,22 @@ export async function POST(req: Request) {
   const body = (await req.json()) as Partial<PickRecord>;
   const stake = Number(body.stake);
   const lockedOdds = Number(body.lockedOdds);
+  const market = body.market === "totals" ? "totals" : "1x2";
 
-  if (!body.matchId || !body.outcome || !stake || stake <= 0 || !lockedOdds || lockedOdds <= 1) {
+  const validOutcome =
+    market === "totals"
+      ? body.outcome === "over" || body.outcome === "under"
+      : body.outcome === "home" || body.outcome === "draw" || body.outcome === "away";
+  const line = Number(body.line);
+  if (
+    !body.matchId ||
+    !validOutcome ||
+    !stake ||
+    stake <= 0 ||
+    !lockedOdds ||
+    lockedOdds <= 1 ||
+    (market === "totals" && (!Number.isFinite(line) || line <= 0))
+  ) {
     return NextResponse.json({ error: "invalid pick" }, { status: 400 });
   }
   if (stake > user.bankroll) {
@@ -26,8 +40,10 @@ export async function POST(req: Request) {
     userId: who.id,
     matchId: String(body.matchId),
     matchLabel: String(body.matchLabel ?? ""),
-    outcome: body.outcome,
+    outcome: body.outcome as PickRecord["outcome"],
     outcomeLabel: String(body.outcomeLabel ?? body.outcome),
+    market,
+    ...(market === "totals" ? { line } : {}),
     lockedOdds,
     stake,
     status: "open",

@@ -37,11 +37,13 @@ interface Profile {
 interface PickRow {
   id: string;
   matchLabel: string;
-  outcome: "home" | "draw" | "away";
+  outcome: "home" | "draw" | "away" | "over" | "under";
   outcomeLabel: string;
+  market?: "1x2" | "totals";
+  line?: number;
   lockedOdds: number;
   stake: number;
-  status: "open" | "won" | "lost";
+  status: "open" | "won" | "lost" | "push";
   createdAt: number;
 }
 
@@ -83,6 +85,8 @@ function MyPicks() {
           </div>
         ) : p.status === "won" ? (
           <span className={styles.pickWon}>+{payout - p.stake}</span>
+        ) : p.status === "push" ? (
+          <span className={styles.pickPush}>push ±0</span>
         ) : (
           <span className={styles.pickLost}>-{p.stake}</span>
         )}

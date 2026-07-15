@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getApiToken, txGet } from "@/app/lib/server/txline-server";
-import { extractSnapshotOdds, normalizeFixture } from "@/app/lib/server/normalize";
+import {
+  extractSnapshotOdds,
+  extractSnapshotTotals,
+  normalizeFixture,
+} from "@/app/lib/server/normalize";
 import type { Match } from "@/app/types";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +44,8 @@ export async function GET() {
             m.odds = dec.odds;
             if (dec.probs) m.probs = dec.probs;
           }
+          const totals = extractSnapshotTotals(entries);
+          if (totals) m.totals = totals;
         } catch {
           /* fixture without odds yet — leave zeros */
         }

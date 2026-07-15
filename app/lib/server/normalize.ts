@@ -170,6 +170,62 @@ export function extractSnapshotOdds(entries: Raw[]): Decoded1x2 | null {
   return (full ?? candidates[0]).dec;
 }
 
+/** over/under total-goals from the odds snapshot.
+ *  entries: SuperOddsType OVERUNDER_PARTICIPANT_GOALS,
+ *  MarketParameters "line=1.5", PriceNames ["over","under"].
+ *  quarter lines (x.25 / x.75) carry half-win semantics — skipped so
+ *  settlement stays honest: .5 lines never push, whole lines push. */
+export interface TotalsMarket {
+  line: number;
+  over: number;
+  under: number;
+  overPct?: number;
+  underPct?: number;
+}
+
+export function extractSnapshotTotals(entries: Raw[]): TotalsMarket | null {
+  if (!Array.isArray(entries)) return null;
+  const candidates: (TotalsMarket & { ts: number })[] = [];
+  for (const e of entries) {
+    const t = pick<string>(e, "SuperOddsType");
+    if (!t || !t.includes("OVERUNDER")) continue;
+    if (!isFullMatchPeriod(pick<string>(e, "MarketPeriod"))) continue;
+    const params = String(pick<string>(e, "MarketParameters") ?? "");
+    const m = params.match(/line=([\d.]+)/);
+    if (!m) continue;
+    const line = Number(m[1]);
+    const quarter = Math.abs((line * 4) % 2) === 1; // .25 / .75 → skip
+    if (quarter) continue;
+    const names = (pick<string[]>(e, "PriceNames") ?? []).map((n) => String(n).toLowerCase());
+    const prices = pick<number[]>(e, "Prices") ?? [];
+    const iO = names.indexOf("over");
+    const iU = names.indexOf("under");
+    if (iO < 0 || iU < 0 || !prices[iO] || !prices[iU]) continue;
+    const pct = pick<(number | string)[]>(e, "Pct");
+    candidates.push({
+      line,
+      over: prices[iO] / 1000,
+      under: prices[iU] / 1000,
+      ...(pct && pct[iO] !== undefined
+        ? { overPct: Math.round(Number(pct[iO])), underPct: Math.round(Number(pct[iU])) }
+        : {}),
+      ts: pick<number>(e, "Ts") ?? 0,
+    });
+  }
+  if (candidates.length === 0) return null;
+  // freshest per line, then the most balanced market (closest to even)
+  const byLine = new Map<number, TotalsMarket & { ts: number }>();
+  for (const c of candidates) {
+    const cur = byLine.get(c.line);
+    if (!cur || c.ts > cur.ts) byLine.set(c.line, c);
+  }
+  const best = [...byLine.values()].sort(
+    (a, b) => Math.abs(a.over - a.under) - Math.abs(b.over - b.under)
+  )[0];
+  const { ts: _ts, ...market } = best;
+  return market;
+}
+
 export function normalizeOddsUpdate(raw: Raw, prev?: Odds): MatchEvent | null {
   const fixtureId = pick<number | string>(raw, "FixtureId", "fixtureId");
   if (fixtureId === undefined) return null; // keepalive

@@ -1,8 +1,14 @@
 "use client";
 
-import type { Match, Outcome } from "@/app/types";
+import type { Match, PickOutcome } from "@/app/types";
 import styles from "./odds.module.css";
 import ui from "@/app/styles/ui.module.css";
+
+/** what the user tapped: a 1x2 side or a totals side */
+export interface Selection {
+  market: "1x2" | "totals";
+  outcome: PickOutcome;
+}
 
 const RING_COLORS = [
   "#6c5ce7",
@@ -82,10 +88,10 @@ export function OddsCard({
   index = 0,
 }: {
   match: Match;
-  onPick: (m: Match, o: Outcome) => void;
+  onPick: (m: Match, sel: Selection) => void;
   index?: number;
 }) {
-  const outcomes: { key: Outcome; label: string }[] = [
+  const outcomes: { key: "home" | "draw" | "away"; label: string }[] = [
     { key: "home", label: match.home },
     { key: "draw", label: "DRAW" },
     { key: "away", label: match.away },
@@ -93,10 +99,11 @@ export function OddsCard({
   const isLive = match.status === "live" || match.status === "ht";
   const hasOdds = match.odds.home > 0;
   const showMeter = isLive && match.probs;
+  const hasTotals = !!match.totals && match.totals.over > 1;
 
   return (
     <div
-      className={`${styles.card} ${showMeter ? styles.cardWithMeter : ""}`}
+      className={`${styles.card} ${showMeter || hasTotals ? styles.cardWithMeter : ""}`}
       style={{ animationDelay: `${index * 0.055}s` }}
     >
       {/* teams */}
@@ -127,7 +134,7 @@ export function OddsCard({
               key={o.key}
               className={styles.oddsBox}
               disabled={empty}
-              onClick={() => onPick(match, o.key)}
+              onClick={() => onPick(match, { market: "1x2", outcome: o.key })}
             >
               <span className={styles.oddsLabel}>{o.label}</span>
               <span className={`${styles.oddsValue} ${ui.num} ${empty ? styles.soon : ""}`}>
@@ -171,6 +178,29 @@ export function OddsCard({
           </>
         )}
       </div>
+
+      {/* over/under total goals — the most balanced clean line from txline */}
+      {hasTotals && match.totals && (
+        <div className={styles.totalsRow}>
+          <span className={styles.totalsChip}>
+            O/U <span className={ui.num}>{match.totals.line}</span> goals
+          </span>
+          <button
+            className={styles.totalsBtn}
+            onClick={() => onPick(match, { market: "totals", outcome: "over" })}
+          >
+            <span className={styles.totalsSide}>over</span>
+            <span className={`${styles.totalsOdds} ${ui.num}`}>{match.totals.over.toFixed(2)}</span>
+          </button>
+          <button
+            className={styles.totalsBtn}
+            onClick={() => onPick(match, { market: "totals", outcome: "under" })}
+          >
+            <span className={styles.totalsSide}>under</span>
+            <span className={`${styles.totalsOdds} ${ui.num}`}>{match.totals.under.toFixed(2)}</span>
+          </button>
+        </div>
+      )}
 
       {/* live win probability meter — market-implied, updates with the stream */}
       {showMeter && match.probs && (

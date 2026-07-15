@@ -36,11 +36,15 @@ export interface PickRecord {
   userId: string;
   matchId: string;
   matchLabel: string;
-  outcome: "home" | "draw" | "away";
+  outcome: "home" | "draw" | "away" | "over" | "under";
   outcomeLabel: string;
+  /** "1x2" (default, legacy picks have none) or "totals" */
+  market?: "1x2" | "totals";
+  /** totals line, e.g. 1.5 (only for market "totals") */
+  line?: number;
   lockedOdds: number;
   stake: number;
-  status: "open" | "won" | "lost";
+  status: "open" | "won" | "lost" | "push";
   createdAt: number;
 }
 
@@ -135,6 +139,7 @@ export async function getPick(id: string): Promise<PickRecord | null> {
     lockedOdds: Number(p.lockedOdds),
     stake: Number(p.stake),
     createdAt: Number(p.createdAt),
+    ...(p.line !== undefined && p.line !== null ? { line: Number(p.line) } : {}),
   };
 }
 
