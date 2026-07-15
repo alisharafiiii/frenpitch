@@ -7,7 +7,7 @@
   padding: 16px;
   margin-bottom: 14px;
   will-change: transform, opacity;
-  animation: fadeIn 0.4s ease both;
+  animation: curtain 0.42s cubic-bezier(0.22, 0.9, 0.35, 1) both;
 }
 
 .profileTop {
@@ -117,6 +117,8 @@
   border-radius: 18px;
   padding: 4px 14px;
   margin-bottom: 14px;
+  will-change: transform, opacity;
+  animation: curtain 0.42s cubic-bezier(0.22, 0.9, 0.35, 1) both;
 }
 
 .pickRow {
@@ -125,6 +127,8 @@
   gap: 10px;
   padding: 11px 0;
   border-bottom: 1px solid var(--tma-border);
+  will-change: transform, opacity;
+  animation: curtain 0.38s cubic-bezier(0.22, 0.9, 0.35, 1) both;
 }
 
 .pickRow:last-child {
@@ -260,6 +264,8 @@
   border-radius: 18px;
   padding: 14px;
   margin-bottom: 14px;
+  will-change: transform, opacity;
+  animation: curtain 0.42s cubic-bezier(0.22, 0.9, 0.35, 1) both;
 }
 
 .artCircle {
@@ -442,6 +448,8 @@
   border-radius: 18px;
   padding: 4px 14px;
   margin-bottom: 14px;
+  will-change: transform, opacity;
+  animation: curtain 0.42s cubic-bezier(0.22, 0.9, 0.35, 1) both;
 }
 
 .menuRow {
@@ -473,7 +481,8 @@
 
 /* module-scoped keyframes (css modules hash animation names —
    global keyframes never matched) */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes curtain {
+  from { opacity: 0; transform: translateY(-14px) scale(0.985); }
+  60% { opacity: 1; }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }

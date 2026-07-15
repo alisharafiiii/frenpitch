@@ -18,7 +18,10 @@
   border-radius: 20px 20px 0 0;
   padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
   will-change: transform, opacity;
-  animation: slideUp 0.35s ease both;
+  /* keyframes MUST carry the -50% x-centering: an animation transform
+     REPLACES the base transform, it doesn't compose with it — plain
+     translateY keyframes shoved the slip half a screen to the right */
+  animation: slipUp 0.35s ease both;
   box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.6);
 }
 
@@ -101,7 +104,7 @@
 
 /* module-scoped keyframes (css modules hash animation names —
    global keyframes never matched) */
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes slipUp {
+  from { opacity: 0; transform: translate(-50%, 24px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }

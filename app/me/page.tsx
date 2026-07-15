@@ -65,10 +65,10 @@ function MyPicks() {
 
   if (picks.length === 0) return null;
 
-  const row = (p: PickRow) => {
+  const row = (p: PickRow, i: number) => {
     const payout = Math.round(p.stake * p.lockedOdds);
     return (
-      <div key={p.id} className={styles.pickRow}>
+      <div key={p.id} className={styles.pickRow} style={{ animationDelay: `${i * 0.05}s` }}>
         <div className={styles.pickMain}>
           <div className={styles.pickLabel}>{p.matchLabel || "match"}</div>
           <div className={styles.pickSub}>

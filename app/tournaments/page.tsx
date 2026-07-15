@@ -211,7 +211,11 @@ export default function TournamentsPage() {
           <div
             key={t.code}
             className={styles.card}
-            style={{ ["--theme" as string]: theme.color, ["--cup-glow" as string]: theme.glow }}
+            style={{
+              ["--theme" as string]: theme.color,
+              ["--cup-glow" as string]: theme.glow,
+              animationDelay: `${i * 0.055}s`,
+            }}
           >
             <div className={styles.cardTop}>
               <span className={isOpen ? styles.openPill : styles.settledPill}>
