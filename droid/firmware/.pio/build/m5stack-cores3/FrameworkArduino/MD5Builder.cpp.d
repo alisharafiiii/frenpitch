@@ -1,0 +1,19 @@
+.pio/build/m5stack-cores3/FrameworkArduino/MD5Builder.cpp.o: \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32/cores/esp32/MD5Builder.cpp \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32/cores/esp32/HEXBuilder.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32/cores/esp32/WString.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32/cores/esp32/pgmspace.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32/cores/esp32/Stream.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32/cores/esp32/Print.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32-libs/esp32s3/include/newlib/platform_include/stdio.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32/cores/esp32/WString.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32/cores/esp32/Printable.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32/cores/esp32/MD5Builder.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32-libs/esp32s3/include/esp_system/include/esp_system.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32-libs/esp32s3/include/esp_common/include/esp_err.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32-libs/esp32s3/include/esp_common/include/esp_compiler.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32-libs/esp32s3/include/esp_common/include/esp_attr.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32-libs/esp32s3/include/esp_common/include/esp_bit_defs.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32-libs/esp32s3/include/esp_common/include/esp_idf_version.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32-libs/esp32s3/include/esp_rom/include/esp_rom_md5.h \
+ /Users/nabu/.platformio/packages/framework-arduinoespressif32/cores/esp32/HashBuilder.h

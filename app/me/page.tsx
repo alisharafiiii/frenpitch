@@ -9,7 +9,6 @@ import { Avatar } from "@/app/components/Avatar";
 import {
   IconBars,
   IconFire,
-  IconQr,
   IconRobot,
   IconTarget,
   IconTrophy,
@@ -125,14 +124,20 @@ function MyPicks() {
 interface FollowState {
   setting: { mode: "auto" | "match"; matchId?: string; matchLabel?: string };
   resolvedMatchId: string | null;
+  droidOnline?: boolean;
 }
 
-/** droid "following" selector — auto (latest pick) or pinned fixture.
- *  saving retargets the droid instantly via server-side feed filtering. */
-function DroidFollow() {
-  const { data: follow, refresh } = useApi<FollowState>("/api/droid/follow");
+/** droid panel — live online status, "following" selector, pair sheet.
+ *  pairing is identity-based: the droid ships with your tg id and
+ *  announces itself on the feed; no qr dance needed. */
+function DroidFollow({ userId }: { userId?: string }) {
+  const { data: follow, refresh } = useApi<FollowState>("/api/droid/follow", {
+    intervalMs: 15000,
+  });
   const { data: fx } = useApi<{ matches: Match[] }>("/api/fixtures");
   const [saving, setSaving] = useState(false);
+  const [showPair, setShowPair] = useState(false);
+  const online = follow?.droidOnline ?? false;
 
   const matches = (fx?.matches ?? []).filter((m) => m.status !== "ft").slice(0, 12);
   const value =
@@ -158,25 +163,53 @@ function DroidFollow() {
   };
 
   return (
-    <div className={styles.followRow}>
-      <span className={styles.followLabel}>following</span>
-      <select
-        className={styles.followSelect}
-        value={value}
-        disabled={saving}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="auto">auto — my latest pick</option>
-        {matches.map((m) => (
-          <option key={m.id} value={String(m.id)}>
-            {m.home} vs {m.away}
-            {m.status === "live" || m.status === "ht"
-              ? ` · live ${m.status === "ht" ? "ht" : `${m.minute}'`}`
-              : ` · ${new Date(m.kickoffUtc).toISOString().slice(11, 16)} utc`}
-          </option>
-        ))}
-      </select>
-    </div>
+    <>
+      <div className={styles.followRow}>
+        <span className={styles.followLabel}>droid</span>
+        <span className={online ? styles.droidOn : styles.droidOff}>
+          <span className={online ? styles.droidDotOn : styles.droidDotOff} />
+          {online ? "online" : "offline"}
+        </span>
+        <button className={styles.pairToggle} onClick={() => setShowPair(!showPair)}>
+          {showPair ? "hide setup" : "pair droid"}
+        </button>
+      </div>
+      {showPair && (
+        <div className={styles.pairSheet}>
+          <div className={styles.pairStep}>
+            <b>1.</b> flash the frenpitch firmware from the repo
+            (<span className={styles.mono}>droid/firmware</span>, platformio)
+          </div>
+          <div className={styles.pairStep}>
+            <b>2.</b> set your id in <span className={styles.mono}>secrets.h</span>:{" "}
+            <span className={styles.mono}>{userId ?? "…"}</span>
+          </div>
+          <div className={styles.pairStep}>
+            <b>3.</b> power it on — it joins your feed and flips to{" "}
+            <span style={{ color: "#34d399" }}>online</span> here within seconds
+          </div>
+        </div>
+      )}
+      <div className={styles.followRow} style={{ borderTop: "none", paddingTop: 0 }}>
+        <span className={styles.followLabel}>following</span>
+        <select
+          className={styles.followSelect}
+          value={value}
+          disabled={saving}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="auto">auto — my latest pick</option>
+          {matches.map((m) => (
+            <option key={m.id} value={String(m.id)}>
+              {m.home} vs {m.away}
+              {m.status === "live" || m.status === "ht"
+                ? ` · live ${m.status === "ht" ? "ht" : `${m.minute}'`}`
+                : ` · ${new Date(m.kickoffUtc).toISOString().slice(11, 16)} utc`}
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
   );
 }
 
@@ -303,17 +336,11 @@ export default function MePage() {
         <div className={styles.rowMain}>
           <div className={styles.rowTitle}>pair your matchday droid</div>
           <p className={styles.rowCopy}>
-            your stackchan reacts to goals, calls odds moves, roasts your frens&apos;
-            picks, and hosts halftime quizzes. scan the qr from the droid screen to pair.
+            your stackchan reacts to goals, calls odds moves, and follows whatever
+            match you point it at — flash it once, control it from here.
           </p>
         </div>
-        <div className={styles.qrTile}>
-          <IconQr size={30} />
-        </div>
-        <button className={styles.pairBtn}>
-          <IconQr size={16} /> pair droid (qr)
-        </button>
-        <DroidFollow />
+        <DroidFollow userId={String(profile?.id ?? user.id ?? "")} />
       </div>
 
       {/* wallet */}

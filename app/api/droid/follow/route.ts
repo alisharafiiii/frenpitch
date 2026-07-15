@@ -28,7 +28,12 @@ export async function GET(req: Request) {
       : { mode: "auto" };
 
   const resolved = await resolveFollowedMatch(who.id);
-  return NextResponse.json({ setting, resolvedMatchId: resolved });
+  const online = await redis().get<number>(`droid:${who.id}:online`);
+  return NextResponse.json({
+    setting,
+    resolvedMatchId: resolved,
+    droidOnline: online !== null && Date.now() - Number(online) < 180_000,
+  });
 }
 
 /** POST — update setting. body: { mode: "auto" } | { mode: "match", matchId, matchLabel? } */

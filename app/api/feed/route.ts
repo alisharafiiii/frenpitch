@@ -55,6 +55,11 @@ export async function GET(request: Request) {
       if (followUser) {
         const refresh = async () => {
           try {
+            // droid heartbeat — the me tab shows online while this ticks
+            const { redis } = await import("@/app/lib/server/db");
+            redis()
+              .set(`droid:${followUser}:online`, Date.now(), { ex: 180 })
+              .catch(() => {});
             const next = await resolveFollowedMatch(followUser);
             if (next && next !== followMatchId) {
               // team codes for the droid's score strip (events don't carry them)

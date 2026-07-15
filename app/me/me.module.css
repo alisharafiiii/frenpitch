@@ -376,6 +376,83 @@
   opacity: 0.5;
 }
 
+.droidOn,
+.droidOff {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: var(--tma-radius-pill);
+  padding: 4px 11px;
+}
+
+.droidOn {
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+}
+
+.droidOff {
+  color: var(--tma-fg-muted);
+  border: 1px solid var(--tma-border);
+}
+
+.droidDotOn,
+.droidDotOff {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.droidDotOn {
+  background: #34d399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.8);
+}
+
+.droidDotOff {
+  background: var(--tma-fg-muted);
+}
+
+.pairToggle {
+  margin-left: auto;
+  background: transparent;
+  border: 1.5px solid #8b7ff5;
+  color: #8b7ff5;
+  border-radius: 10px;
+  padding: 7px 14px;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.pairSheet {
+  flex-basis: 100%;
+  background: rgba(124, 111, 240, 0.06);
+  border: 1px solid rgba(124, 111, 240, 0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pairStep {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--tma-fg-dim);
+}
+
+.pairStep b {
+  color: #8b7ff5;
+}
+
+.mono {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--tma-fg);
+  user-select: all;
+}
+
 .embeddedChip {
   font-size: 10px;
   font-weight: 700;
