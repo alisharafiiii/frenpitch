@@ -26,6 +26,7 @@
 #include <WiFi.h>
 #include <esp_wifi.h>
 #include <WiFiClientSecure.h>
+#include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <SCServo.h>
 #include <math.h>
@@ -253,6 +254,55 @@ static void drawProbBar() {
   centerText("WIN PROBABILITY", 212, C_DIM, 1);
 }
 
+// ================= voice (elevenlabs via our server) =================
+// the droid fetches ready-made 16khz pcm from /api/droid/tts — the api
+// key never leaves the server. playback = sauron-eye's announce path.
+static String urlEncode(const char* s) {
+  String out;
+  for (const char* p = s; *p; p++) {
+    char c = *p;
+    if (isalnum((unsigned char)c)) out += c;
+    else if (c == ' ') out += "%20";
+    else { char b[5]; snprintf(b, sizeof(b), "%%%02X", (unsigned char)c); out += b; }
+  }
+  return out;
+}
+
+static void speak(const char* text) {
+  if (WiFi.status() != WL_CONNECTED) return;
+  HTTPClient ha;
+  WiFiClientSecure* cli = new WiFiClientSecure();
+  cli->setInsecure();
+  ha.begin(*cli, String("https://") + FEED_HOST + "/api/droid/tts?text=" + urlEncode(text));
+  ha.setTimeout(8000);
+  uint8_t* pcm = nullptr;
+  if (ha.GET() == 200) {
+    int len = ha.getSize();
+    if (len > 64 && len < 400000 && (pcm = (uint8_t*)ps_malloc(len))) {
+      WiFiClient* st = ha.getStreamPtr();
+      size_t rd = 0;
+      uint32_t t0 = millis();
+      while (rd < (size_t)len && millis() - t0 < 10000) {
+        int av = st->available();
+        if (av > 0) { int n = st->read(pcm + rd, (size_t)av < (len - rd) ? av : (len - rd)); if (n > 0) rd += n; }
+        else if (!st->connected() && st->available() == 0) break;
+        else delay(3);
+      }
+      if (rd > 64) {
+        int16_t* s = (int16_t*)pcm;
+        size_t ns = rd / 2;
+        for (size_t i = 0; i < ns; i++) s[i] = (int16_t)(s[i] * 0.7f); // duck a touch
+        M5.Speaker.playRaw((const int16_t*)pcm, ns, 16000, false);
+        while (M5.Speaker.isPlaying()) delay(20);
+      }
+      free(pcm);
+      pcm = nullptr;
+    }
+  }
+  ha.end();
+  delete cli;
+}
+
 // ================= sounds =================
 static void beep(int f, int ms) { M5.Speaker.tone(f, ms); delay(ms); }
 static void soundGoal()   { beep(880, 90); beep(1175, 90); beep(1568, 240); }
@@ -286,7 +336,10 @@ static void seqGoal() {
   strobe(C_GREEN, "GOAL", 3);
   mood = M_JOY; drawFace();
   gReq = 5;                        // dance (motionTask)
-  delay(1600);
+  char say[64];
+  snprintf(say, sizeof(say), "gooooal! %s %d, %s %d", match.home, match.scoreH, match.away, match.scoreA);
+  speak(say);
+  delay(400);
   char buf[36]; snprintf(buf, sizeof(buf), "%s %d-%d %s", match.home, match.scoreH, match.scoreA, match.away);
   char m[8]; snprintf(m, sizeof(m), "%d'", match.minute);
   ticker(buf, m, C_GREEN);
@@ -297,7 +350,9 @@ static void seqYellow() {
   M5.Display.fillScreen(C_BG);
   M5.Display.fillRoundRect(130, 60, 60, 90, 6, C_AMBER);   // card up
   delay(900);
-  mood = M_SQUINT; drawFace(); delay(900);
+  mood = M_SQUINT; drawFace();
+  speak("yellow card. careful now");
+  delay(400);
   char m[8]; snprintf(m, sizeof(m), "%d'", match.minute);
   ticker("CAUTION", m, C_AMBER);
   moodUntil = millis() + 5000;
@@ -307,7 +362,8 @@ static void seqRed() {
   strobe(C_RED, "RED", 2);
   mood = M_SHOCK; drawFace();
   gReq = 3;                        // headshake
-  delay(1200);
+  speak("red card! he is off!");
+  delay(400);
   char m[8]; snprintf(m, sizeof(m), "%d'", match.minute);
   ticker("SENT OFF", m, C_RED);
   moodUntil = millis() + 6000;
@@ -362,10 +418,13 @@ static void handleEvent(JsonDocument& doc) {
   else if (!strcmp(type, "card_yellow")) { match.live = true; seqYellow(); }
   else if (!strcmp(type, "card_red"))    { match.live = true; seqRed(); }
   else if (!strcmp(type, "var_check"))   { soundNotify(); mood = M_SQUINT; moodUntil = millis() + 4000; ticker("VAR CHECK", "", C_AMBER); }
-  else if (!strcmp(type, "kickoff"))     { match.live = true; soundNotify(); gReq = 1; ticker("KICKOFF", "", C_GREEN); }
+  else if (!strcmp(type, "kickoff"))     { match.live = true; soundNotify(); gReq = 1; speak("kickoff! we are live"); ticker("KICKOFF", "", C_GREEN); }
   else if (!strcmp(type, "halftime"))    { mood = M_SLEEPY; moodUntil = millis() + 15000; }
   else if (!strcmp(type, "fulltime")) {
     match.live = false;
+    char say[64];
+    snprintf(say, sizeof(say), "full time. %s %d, %s %d", match.home, match.scoreH, match.away, match.scoreA);
+    speak(say);
     char buf[36]; snprintf(buf, sizeof(buf), "%s %d-%d %s", match.home, match.scoreH, match.scoreA, match.away);
     ticker("FULL TIME", buf, C_PURPLE);
     gReq = 2;                      // nod goodnight
@@ -445,16 +504,18 @@ void setup() {
   M5.update();
   if (M5.Touch.getCount() > 0 || M5.BtnA.isPressed()) demoMode = true;
 
-  if (demoMode) { banner("frenpitch droid", "demo mode", C_AMBER); delay(1200); return; }
-
-  banner("frenpitch droid", "connecting wifi...", C_GREEN);
+  banner("frenpitch droid", demoMode ? "demo mode" : "connecting wifi...", demoMode ? C_AMBER : C_GREEN);
   WiFi.mode(WIFI_STA);
   // bell/canadian routers park on ch 12/13 — default US config never finds them
   wifi_country_t ca = { "CA", 1, 13, WIFI_COUNTRY_POLICY_MANUAL };
   esp_wifi_set_country(&ca);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   uint32_t t0 = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 20000) delay(200);
+  // demo mode still wants wifi for the voice — shorter patience, no fallback drama
+  uint32_t patience = demoMode ? 12000 : 20000;
+  while (WiFi.status() != WL_CONNECTED && millis() - t0 < patience) delay(200);
+
+  if (demoMode) { delay(400); return; }
 
   if (WiFi.status() == WL_CONNECTED) {
     banner("frenpitch droid", "joining the feed...", C_GREEN);

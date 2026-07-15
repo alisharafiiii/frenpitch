@@ -6,6 +6,7 @@ import {
   txGet,
 } from "@/app/lib/server/txline-server";
 import {
+  extractSnapshotOdds,
   normalizeFixture,
   normalizeOddsUpdate,
   normalizeScoreUpdate,
@@ -52,6 +53,14 @@ export async function GET(request: Request) {
       // droid filter: null = pass everything (browser / no target yet)
       let followMatchId: string | null = null;
       let followLabels: { home: string; away: string } | null = null;
+
+      const send = (e: MatchEvent) => {
+        if (closed) return;
+        if (followUser && followMatchId && e.matchId !== followMatchId) return;
+        const out = followUser && followLabels ? { ...e, ...followLabels } : e;
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(out)}\n\n`));
+      };
+
       if (followUser) {
         const refresh = async () => {
           try {
@@ -62,7 +71,8 @@ export async function GET(request: Request) {
               .catch(() => {});
             const next = await resolveFollowedMatch(followUser);
             if (next && next !== followMatchId) {
-              // team codes for the droid's score strip (events don't carry them)
+              followMatchId = next;
+              // team codes for the score strip (events don't carry them)
               try {
                 const raw = await txGet<Record<string, unknown>[]>("/api/fixtures/snapshot");
                 const m = raw.map(normalizeFixture).find((f) => f && f.id === next);
@@ -70,8 +80,32 @@ export async function GET(request: Request) {
               } catch {
                 followLabels = null;
               }
+              // seed the CURRENT line from the same snapshot the home page
+              // shows — otherwise the droid waits for the next move and can
+              // sit on a stale/blank line that disagrees with the app
+              try {
+                const entries = await txGet<Record<string, unknown>[]>(
+                  `/api/odds/snapshot/${next}`
+                );
+                const dec = extractSnapshotOdds(entries);
+                if (dec) {
+                  lastOdds.set(next, dec.odds);
+                  send({
+                    id: `seed-${next}-${Date.now()}`,
+                    matchId: next,
+                    t: Date.now(),
+                    type: "odds_move",
+                    minute: 0,
+                    odds: dec.odds,
+                    probs: dec.probs,
+                  });
+                }
+              } catch {
+                /* no line yet — droid shows "waiting for line" */
+              }
+            } else {
+              followMatchId = next;
             }
-            followMatchId = next;
           } catch {
             /* keep the last known target */
           }
@@ -80,13 +114,6 @@ export async function GET(request: Request) {
         const timer = setInterval(refresh, 60_000);
         request.signal.addEventListener("abort", () => clearInterval(timer));
       }
-
-      const send = (e: MatchEvent) => {
-        if (closed) return;
-        if (followUser && followMatchId && e.matchId !== followMatchId) return;
-        const out = followUser && followLabels ? { ...e, ...followLabels } : e;
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(out)}\n\n`));
-      };
 
       const pump = async (
         path: string,
