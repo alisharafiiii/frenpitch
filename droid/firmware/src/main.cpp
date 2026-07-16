@@ -186,17 +186,24 @@ static void centerText(const char* s, int y, uint16_t col, int size) {
 
 // ================= frames =================
 
-// mini flags: 3 vertical color bands per country — reads instantly at 24px
-struct FlagDef { const char* code; uint16_t a, b, c; };
+// flags: 3 color bands per country — kept as 24-bit so they can be
+// dimmed for the dissolve effect on the info panel
+struct FlagDef { const char* code; uint32_t a, b, c; };
 static FlagDef FLAG_TABLE[40];
 static int FLAG_N = 0;
 static void addFlag(const char* code, uint32_t a, uint32_t b, uint32_t c) {
-  FLAG_TABLE[FLAG_N++] = {
-    code,
-    M5.Display.color565((a >> 16) & 255, (a >> 8) & 255, a & 255),
-    M5.Display.color565((b >> 16) & 255, (b >> 8) & 255, b & 255),
-    M5.Display.color565((c >> 16) & 255, (c >> 8) & 255, c & 255),
-  };
+  FLAG_TABLE[FLAG_N++] = { code, a, b, c };
+}
+static inline uint16_t rgb565(uint32_t rgb, float dim = 1.0f) {
+  return M5.Display.color565(
+    (uint8_t)(((rgb >> 16) & 255) * dim),
+    (uint8_t)(((rgb >> 8) & 255) * dim),
+    (uint8_t)((rgb & 255) * dim));
+}
+static const FlagDef* findFlag(const char* code) {
+  for (int i = 0; i < FLAG_N; i++)
+    if (!strcmp(FLAG_TABLE[i].code, code)) return &FLAG_TABLE[i];
+  return nullptr;
 }
 static void initFlags() {
   addFlag("NOR", 0xEF2B2D, 0xFFFFFF, 0x002868);
@@ -228,15 +235,14 @@ static void initFlags() {
   addFlag("NEW", 0x00247D, 0xFFFFFF, 0xCC142B);
 }
 static void drawFlag(int x, int y, int w, int h, const char* code) {
-  for (int i = 0; i < FLAG_N; i++) {
-    if (!strcmp(FLAG_TABLE[i].code, code)) {
-      int band = w / 3;
-      M5.Display.fillRect(x, y, band, h, FLAG_TABLE[i].a);
-      M5.Display.fillRect(x + band, y, band, h, FLAG_TABLE[i].b);
-      M5.Display.fillRect(x + 2 * band, y, w - 2 * band, h, FLAG_TABLE[i].c);
-      M5.Display.drawRect(x, y, w, h, C_DIM);
-      return;
-    }
+  const FlagDef* f = findFlag(code);
+  if (f) {
+    int band = w / 3;
+    M5.Display.fillRect(x, y, band, h, rgb565(f->a));
+    M5.Display.fillRect(x + band, y, band, h, rgb565(f->b));
+    M5.Display.fillRect(x + 2 * band, y, w - 2 * band, h, rgb565(f->c));
+    M5.Display.drawRect(x, y, w, h, C_DIM);
+    return;
   }
   // unknown team: neutral globe dot
   M5.Display.fillCircle(x + w / 2, y + h / 2, h / 2, C_DIM);
@@ -277,74 +283,103 @@ static void drawScoreStrip() {
     M5.Display.drawString(m, W / 2, 26);
   }
 }
-/** the chosen info frame (design B — split panel): each team owns a
- *  tinted half — flag, code, score, odds, win prob — minute in the
- *  center gutter. pre-match: "vs" + kickoff instead of score/minute. */
+/** the locked info frame (v5): top 40% of each half = the flag laid
+ *  HORIZONTAL, dissolving into black (stepped dim bands — lcd has no
+ *  alpha), then a huge score digit, big odds, big win %. minute lives
+ *  in the gutter in glowing matrix green with a live dot. */
 static void drawTeamPanel(int x0, int w, bool homeSide) {
   uint16_t accent = homeSide ? C_GREEN : C_PURPLE;
-  uint16_t tint = homeSide
-    ? M5.Display.color565(10, 26, 12)
-    : M5.Display.color565(18, 14, 34);
-  // vertical fade: tint strongest on top
-  M5.Display.fillRect(x0, 0, w, 120, tint);
-  M5.Display.fillRect(x0, 120, w, 60, homeSide
-    ? M5.Display.color565(6, 14, 8)
-    : M5.Display.color565(10, 8, 18));
+  const char* code = homeSide ? match.home : match.away;
   int cx = x0 + w / 2;
-  drawFlag(cx - 22, 18, 44, 28, homeSide ? match.home : match.away);
-  boldText(homeSide ? match.home : match.away, cx, 56, accent, 3, top_center);
 
-  char buf[16];
-  if (match.live || match.scoreH + match.scoreA > 0) {
-    snprintf(buf, sizeof(buf), "%d", homeSide ? match.scoreH : match.scoreA);
-    M5.Display.setTextSize(7);
-    M5.Display.setTextDatum(top_center);
-    M5.Display.setTextColor(TFT_WHITE, tint);
-    M5.Display.drawString(buf, cx, 92);
+  // flag zone: 96px tall, 3 horizontal stripes, each split into 4
+  // rows of decreasing brightness → dissolve-to-black finish
+  const int FH = 96;
+  const FlagDef* f = findFlag(code);
+  const float dims[4] = { 0.85f, 0.62f, 0.38f, 0.16f };
+  if (f) {
+    const uint32_t cols[3] = { f->a, f->b, f->c };
+    int stripe = FH / 3;
+    for (int s = 0; s < 3; s++) {
+      int row = stripe / 4;
+      for (int r = 0; r < 4; r++) {
+        int y = s * stripe + r * row;
+        int h = (r == 3) ? (s + 1) * stripe - y : row; // fill remainder
+        M5.Display.fillRect(x0, y, w, h, rgb565(cols[s], dims[r] * (1.0f - 0.18f * s)));
+      }
+    }
   } else {
-    M5.Display.setTextSize(5);
-    M5.Display.setTextDatum(top_center);
-    M5.Display.setTextColor(C_DIM, tint);
-    M5.Display.drawString("-", cx, 100);
+    M5.Display.fillRect(x0, 0, w, FH, C_DIM);
   }
 
+  // team code on the flag — white with black outline so any flag works
+  M5.Display.setTextSize(3);
+  M5.Display.setTextDatum(top_center);
+  M5.Display.setTextColor(TFT_BLACK);
+  for (int dx = -1; dx <= 1; dx++)
+    for (int dy = -1; dy <= 1; dy++)
+      if (dx || dy) M5.Display.drawString(code, cx + dx, 8 + dy);
+  M5.Display.setTextColor(TFT_WHITE);
+  M5.Display.drawString(code, cx, 8);
+
+  // giant score digit riding the dissolve seam
+  char buf[16];
+  M5.Display.setTextDatum(top_center);
+  if (match.live || match.scoreH + match.scoreA > 0) {
+    snprintf(buf, sizeof(buf), "%d", homeSide ? match.scoreH : match.scoreA);
+    M5.Display.setTextSize(9);
+    M5.Display.setTextColor(TFT_WHITE, C_BG);
+    M5.Display.drawString(buf, cx, 86);
+  } else {
+    M5.Display.setTextSize(7);
+    M5.Display.setTextColor(C_DIM, C_BG);
+    M5.Display.drawString("-", cx, 96);
+  }
+
+  // big odds + win %
   float o = homeSide ? match.oddsH : match.oddsA;
   if (o > 0) {
-    snprintf(buf, sizeof(buf), "@ %.2f", o);
-    boldText(buf, cx, 172, accent, 2, top_center);
+    snprintf(buf, sizeof(buf), "%.2f", o);
+    M5.Display.setTextSize(4);
+    M5.Display.setTextColor(accent, C_BG);
+    M5.Display.drawString(buf, cx, 164);
   }
   int p = homeSide ? match.probH : match.probA;
   if (p > 0) {
     snprintf(buf, sizeof(buf), "%d%%", p);
-    M5.Display.setTextSize(2);
-    M5.Display.setTextDatum(top_center);
+    M5.Display.setTextSize(3);
     M5.Display.setTextColor(accent, C_BG);
-    M5.Display.drawString(buf, cx, 202);
+    M5.Display.drawString(buf, cx, 204);
   }
 }
 
 static void drawInfoPanel() {
   M5.Display.fillScreen(C_BG);
   int W = M5.Display.width();
-  int half = (W - 24) / 2;
+  const int GUT = 52;
+  int half = (W - GUT) / 2;
   drawTeamPanel(0, half, true);
   drawTeamPanel(W - half, half, false);
-  // center gutter: dividers + minute / kickoff
-  M5.Display.drawFastVLine(half + 2, 12, M5.Display.height() - 24, C_DIM);
-  M5.Display.drawFastVLine(W - half - 3, 12, M5.Display.height() - 24, C_DIM);
-  char m[8];
+
+  // gutter: big matrix-green minute + live dot, divider below
+  uint16_t mint = M5.Display.color565(57, 255, 136);
+  M5.Display.fillRect(half, 0, GUT, M5.Display.height(), C_BG);
+  M5.Display.setTextDatum(middle_center);
   if (match.live) {
+    char m[8];
     snprintf(m, sizeof(m), "%d'", match.minute);
-    M5.Display.setTextSize(2);
-    M5.Display.setTextDatum(middle_center);
-    M5.Display.setTextColor(C_AMBER, C_BG);
-    M5.Display.drawString(m, W / 2, 120);
+    M5.Display.setTextSize(3);
+    M5.Display.setTextColor(mint, C_BG);
+    M5.Display.drawString(m, W / 2, 104);
+    M5.Display.fillCircle(W / 2 - 16, 134, 3, mint);
+    M5.Display.setTextSize(1);
+    M5.Display.drawString("LIVE", W / 2 + 6, 134);
   } else {
-    M5.Display.setTextSize(2);
-    M5.Display.setTextDatum(middle_center);
+    M5.Display.setTextSize(3);
     M5.Display.setTextColor(C_DIM, C_BG);
-    M5.Display.drawString("vs", W / 2, 120);
+    M5.Display.drawString("vs", W / 2, 104);
   }
+  M5.Display.drawFastVLine(W / 2, 152, 40, M5.Display.color565(38, 38, 47));
 }
 
 // ================= voice (elevenlabs via our server) =================
