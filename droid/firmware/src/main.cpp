@@ -177,25 +177,6 @@ static void applyMood() {
 static void frameBegin() { if (avatarUp) avatar.suspend(); delay(30); }
 static void frameEnd()   { if (avatarUp) { applyMood(); avatar.resume(); } }
 
-// score lives in the avatar's speech balloon while the face is up
-static void updateBalloon() {
-  if (!avatarUp) return;
-  static char last[48] = "";
-  char buf[48] = "";
-  if (match.live) {
-    snprintf(buf, sizeof(buf), "%s %d-%d %s  %d'", match.home, match.scoreH, match.scoreA, match.away, match.minute);
-  } else if (match.oddsH > 0) {
-    snprintf(buf, sizeof(buf), "%s %.2f  x %.2f  %s %.2f", match.home, match.oddsH, match.oddsD, match.away, match.oddsA);
-  }
-  if (strcmp(buf, last) != 0) {
-    strlcpy(last, buf, sizeof(last));
-    avatar.setSpeechText(buf);
-  }
-}
-
-// dot helpers still used by the custom frames (prob bar)
-static const int CELL = 8, DOTR = 3;
-static void dotAt(int cx, int cy, uint16_t col) { M5.Display.fillCircle(cx * CELL + CELL / 2, cy * CELL + CELL / 2, DOTR, col); }
 static void centerText(const char* s, int y, uint16_t col, int size) {
   M5.Display.setTextSize(size);
   M5.Display.setTextDatum(middle_center);
@@ -296,29 +277,74 @@ static void drawScoreStrip() {
     M5.Display.drawString(m, W / 2, 26);
   }
 }
-static void drawOddsLine() {
-  M5.Display.fillScreen(C_BG);
-  drawScoreStrip();
-  if (match.oddsH <= 0) { centerText("waiting for line", 120, C_DIM, 2); return; }
-  char buf[48];
-  snprintf(buf, sizeof(buf), "%s %.2f", match.home, match.oddsH); centerText(buf, 76, C_GREEN, 3);
-  snprintf(buf, sizeof(buf), "X %.2f", match.oddsD);              centerText(buf, 118, C_DIM, 2);
-  snprintf(buf, sizeof(buf), "%s %.2f", match.away, match.oddsA); centerText(buf, 158, C_PURPLE, 3);
-  centerText("LIVE LINE", 212, C_DIM, 1);
-}
-static void drawProbBar() {
-  M5.Display.fillScreen(C_BG);
-  drawScoreStrip();
-  if (match.probH + match.probA == 0) { centerText("no probs yet", 120, C_DIM, 2); return; }
+/** the chosen info frame (design B — split panel): each team owns a
+ *  tinted half — flag, code, score, odds, win prob — minute in the
+ *  center gutter. pre-match: "vs" + kickoff instead of score/minute. */
+static void drawTeamPanel(int x0, int w, bool homeSide) {
+  uint16_t accent = homeSide ? C_GREEN : C_PURPLE;
+  uint16_t tint = homeSide
+    ? M5.Display.color565(10, 26, 12)
+    : M5.Display.color565(18, 14, 34);
+  // vertical fade: tint strongest on top
+  M5.Display.fillRect(x0, 0, w, 120, tint);
+  M5.Display.fillRect(x0, 120, w, 60, homeSide
+    ? M5.Display.color565(6, 14, 8)
+    : M5.Display.color565(10, 8, 18));
+  int cx = x0 + w / 2;
+  drawFlag(cx - 22, 18, 44, 28, homeSide ? match.home : match.away);
+  boldText(homeSide ? match.home : match.away, cx, 56, accent, 3, top_center);
+
   char buf[16];
-  M5.Display.setTextSize(3);
-  snprintf(buf, sizeof(buf), "%d%%", match.probH);
-  M5.Display.setTextDatum(middle_left);  M5.Display.setTextColor(C_GREEN, C_BG);  M5.Display.drawString(buf, 12, 110);
-  snprintf(buf, sizeof(buf), "%d%%", match.probA);
-  M5.Display.setTextDatum(middle_right); M5.Display.setTextColor(C_PURPLE, C_BG); M5.Display.drawString(buf, M5.Display.width() - 12, 110);
-  int total = 26, on = (match.probH * total) / 100;
-  for (int i = 0; i < total; i++) dotAt(7 + i, 21, i < on ? C_GREEN : C_PURPLE);
-  centerText("WIN PROBABILITY", 212, C_DIM, 1);
+  if (match.live || match.scoreH + match.scoreA > 0) {
+    snprintf(buf, sizeof(buf), "%d", homeSide ? match.scoreH : match.scoreA);
+    M5.Display.setTextSize(7);
+    M5.Display.setTextDatum(top_center);
+    M5.Display.setTextColor(TFT_WHITE, tint);
+    M5.Display.drawString(buf, cx, 92);
+  } else {
+    M5.Display.setTextSize(5);
+    M5.Display.setTextDatum(top_center);
+    M5.Display.setTextColor(C_DIM, tint);
+    M5.Display.drawString("-", cx, 100);
+  }
+
+  float o = homeSide ? match.oddsH : match.oddsA;
+  if (o > 0) {
+    snprintf(buf, sizeof(buf), "@ %.2f", o);
+    boldText(buf, cx, 172, accent, 2, top_center);
+  }
+  int p = homeSide ? match.probH : match.probA;
+  if (p > 0) {
+    snprintf(buf, sizeof(buf), "%d%%", p);
+    M5.Display.setTextSize(2);
+    M5.Display.setTextDatum(top_center);
+    M5.Display.setTextColor(accent, C_BG);
+    M5.Display.drawString(buf, cx, 202);
+  }
+}
+
+static void drawInfoPanel() {
+  M5.Display.fillScreen(C_BG);
+  int W = M5.Display.width();
+  int half = (W - 24) / 2;
+  drawTeamPanel(0, half, true);
+  drawTeamPanel(W - half, half, false);
+  // center gutter: dividers + minute / kickoff
+  M5.Display.drawFastVLine(half + 2, 12, M5.Display.height() - 24, C_DIM);
+  M5.Display.drawFastVLine(W - half - 3, 12, M5.Display.height() - 24, C_DIM);
+  char m[8];
+  if (match.live) {
+    snprintf(m, sizeof(m), "%d'", match.minute);
+    M5.Display.setTextSize(2);
+    M5.Display.setTextDatum(middle_center);
+    M5.Display.setTextColor(C_AMBER, C_BG);
+    M5.Display.drawString(m, W / 2, 120);
+  } else {
+    M5.Display.setTextSize(2);
+    M5.Display.setTextDatum(middle_center);
+    M5.Display.setTextColor(C_DIM, C_BG);
+    M5.Display.drawString("vs", W / 2, 120);
+  }
 }
 
 // ================= voice (elevenlabs via our server) =================
@@ -450,7 +476,7 @@ static void seqOddsMove(float from, float to, const char* team) {
     delay(140);
   }
   idleFrame = 1; idleFlip = millis();
-  drawOddsLine();                  // land on the full line frame (still suspended)
+  drawInfoPanel();                 // land on the split panel (still suspended)
 }
 
 // ================= sse feed =================
@@ -561,8 +587,7 @@ static void runShowcase() {
   M5.Display.fillScreen(C_BG);
   M5.Display.fillRoundRect(130, 60, 60, 90, 6, C_AMBER); delay(900); // card up
   strobe(C_RED, "RED", 2);
-  drawOddsLine(); delay(1500);
-  drawProbBar(); delay(1500);
+  drawInfoPanel(); delay(2000);
   mood = M_IDLE;
   applyMood();
   avatar.resume();
@@ -677,25 +702,23 @@ void loop() {
     mood = M_IDLE; moodUntil = 0; applyMood();
   }
 
-  // idle rotation: avatar face 12s → live line 4s → prob bar 4s
-  if (now - idleFlip > (idleFrame == 0 ? 12000UL : 4000UL)) {
+  // idle rotation: clean avatar face 12s → split info panel 5s
+  if (now - idleFlip > (idleFrame == 0 ? 12000UL : 5000UL)) {
     int prev = idleFrame;
-    idleFrame = (idleFrame + 1) % 3;
-    if (idleFrame > 0 && match.oddsH <= 0 && !match.live) idleFrame = 0;
+    idleFrame = (idleFrame + 1) % 2;
+    if (idleFrame == 1 && match.oddsH <= 0 && !match.live) idleFrame = 0;
     idleFlip = now;
-    if (idleFrame > 0) {
+    if (idleFrame == 1) {
       if (prev == 0 && avatarUp) { avatar.suspend(); delay(30); }
-      if (idleFrame == 1) drawOddsLine(); else drawProbBar();
-    } else if (prev > 0 && avatarUp) {
+      drawInfoPanel();
+    } else if (prev == 1 && avatarUp) {
       applyMood();
       avatar.resume();
     }
-  }
-
-  // score / line lives in the speech balloon while the face is up
-  if (idleFrame == 0) {
-    static uint32_t lastBalloon = 0;
-    if (now - lastBalloon > 1000) { updateBalloon(); lastBalloon = now; }
+  } else if (idleFrame == 1) {
+    // keep the live minute fresh while the panel is up
+    static uint32_t lastPanel = 0;
+    if (match.live && now - lastPanel > 1000) { drawInfoPanel(); lastPanel = now; }
   }
 
   delay(20);
