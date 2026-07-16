@@ -16,44 +16,8 @@ import {
 import { record } from "@/app/lib/server/recorder";
 import { resolveFollowedMatch } from "@/app/lib/server/droid";
 import { redis } from "@/app/lib/server/db";
+import { rememberPrices } from "@/app/lib/server/prices";
 import type { MatchEvent, Odds } from "@/app/types";
-
-/** the stream is the source of truth when snapshots go empty (observed
- *  2026-07-15: all odds snapshots returned [] while the stream kept
- *  pricing) — remember every price so /api/fixtures can fall back. */
-function rememberPrices(e: MatchEvent): void {
-  void (async () => {
-    try {
-      const key = `match:${e.matchId}:lastOdds`;
-      const patch: Record<string, string> = {};
-      if (e.odds) patch.odds = JSON.stringify(e.odds);
-      if (e.probs) patch.probs = JSON.stringify(e.probs);
-      if (e.totals) patch.totals = JSON.stringify(e.totals);
-      if (e.totals1h) patch.totals1h = JSON.stringify(e.totals1h);
-      if (e.ah && e.ah.length > 0) {
-        // merge the updated line into the remembered set (max 3, balanced first)
-        const prevRaw = await redis().hget<unknown>(key, "ah");
-        let prev: { line: number; home: number; away: number }[] = [];
-        try {
-          prev = typeof prevRaw === "string" ? JSON.parse(prevRaw) : ((prevRaw as typeof prev) ?? []);
-        } catch { prev = []; }
-        const merged = new Map(prev.map((l) => [l.line, l]));
-        for (const l of e.ah) merged.set(l.line, l);
-        patch.ah = JSON.stringify(
-          [...merged.values()]
-            .sort((a, b) => Math.abs(a.home - a.away) - Math.abs(b.home - b.away))
-            .slice(0, 3)
-        );
-      }
-      if (Object.keys(patch).length === 0) return;
-      patch.ts = String(Date.now());
-      await redis().hset(key, patch);
-      await redis().expire(key, 12 * 3600);
-    } catch {
-      /* memory is best-effort */
-    }
-  })();
-}
 
 export const dynamic = "force-dynamic";
 

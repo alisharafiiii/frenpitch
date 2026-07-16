@@ -1,0 +1,19 @@
+name: warm price memory
+
+# keeps the stream-fed price memory (redis) warm when nobody has the
+# app open — txline snapshots go empty at times; the stream is truth.
+# github cron minimum is 5 minutes (and can drift a few min — fine).
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: ping /api/warm
+        run: |
+          curl -s --max-time 45 "https://frenpitch.vercel.app/api/warm" || true
