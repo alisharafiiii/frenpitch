@@ -84,30 +84,30 @@ function IconBolt() {
   );
 }
 
-/** one expandable market row: label + two price buttons */
-function TwoWayRow({
-  label,
-  a,
-  b,
-  onPick,
+/** a market section: small header + aligned two-column price grid */
+function MarketSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className={styles.mkSection}>
+      <div className={styles.mkHead}>{title}</div>
+      <div className={styles.mkGrid}>{children}</div>
+    </div>
+  );
+}
+
+function MarketBtn({
+  side,
+  odds,
+  onClick,
 }: {
-  label: string;
-  a: { name: string; odds: number };
-  b: { name: string; odds: number };
-  onPick: (side: "a" | "b") => void;
+  side: string;
+  odds: number;
+  onClick: () => void;
 }) {
   return (
-    <div className={styles.totalsRow}>
-      <span className={styles.totalsChip}>{label}</span>
-      <button className={styles.totalsBtn} onClick={() => onPick("a")}>
-        <span className={styles.totalsSide}>{a.name}</span>
-        <span className={`${styles.totalsOdds} ${ui.num}`}>{a.odds.toFixed(2)}</span>
-      </button>
-      <button className={styles.totalsBtn} onClick={() => onPick("b")}>
-        <span className={styles.totalsSide}>{b.name}</span>
-        <span className={`${styles.totalsOdds} ${ui.num}`}>{b.odds.toFixed(2)}</span>
-      </button>
-    </div>
+    <button className={styles.mkBtn} onClick={onClick}>
+      <span className={styles.mkSide}>{side}</span>
+      <span className={`${styles.mkOdds} ${ui.num}`}>{odds.toFixed(2)}</span>
+    </button>
   );
 }
 
@@ -230,37 +230,51 @@ export function OddsCard({
       {expanded && (
         <div className={styles.marketsPanel} onClick={(ev) => ev.stopPropagation()}>
           {hasTotals && match.totals && (
-            <TwoWayRow
-              label={`o/u ${match.totals.line} goals`}
-              a={{ name: "over", odds: match.totals.over }}
-              b={{ name: "under", odds: match.totals.under }}
-              onPick={(side) =>
-                onPick(match, { market: "totals", outcome: side === "a" ? "over" : "under", line: match.totals!.line })
-              }
-            />
+            <MarketSection title="total goals">
+              <MarketBtn
+                side={`over ${match.totals.line}`}
+                odds={match.totals.over}
+                onClick={() => onPick(match, { market: "totals", outcome: "over", line: match.totals!.line })}
+              />
+              <MarketBtn
+                side={`under ${match.totals.line}`}
+                odds={match.totals.under}
+                onClick={() => onPick(match, { market: "totals", outcome: "under", line: match.totals!.line })}
+              />
+            </MarketSection>
           )}
           {hasTotals1h && match.totals1h && (
-            <TwoWayRow
-              label={`1h o/u ${match.totals1h.line}`}
-              a={{ name: "over", odds: match.totals1h.over }}
-              b={{ name: "under", odds: match.totals1h.under }}
-              onPick={(side) =>
-                onPick(match, { market: "totals1h", outcome: side === "a" ? "over" : "under", line: match.totals1h!.line })
-              }
-            />
-          )}
-          {hasAh &&
-            match.ah!.map((l) => (
-              <TwoWayRow
-                key={l.line}
-                label={`handicap ${l.line > 0 ? "+" : ""}${l.line}`}
-                a={{ name: match.home.toLowerCase(), odds: l.home }}
-                b={{ name: match.away.toLowerCase(), odds: l.away }}
-                onPick={(side) =>
-                  onPick(match, { market: "ah", outcome: side === "a" ? "home" : "away", line: l.line })
-                }
+            <MarketSection title="1st half goals">
+              <MarketBtn
+                side={`over ${match.totals1h.line}`}
+                odds={match.totals1h.over}
+                onClick={() => onPick(match, { market: "totals1h", outcome: "over", line: match.totals1h!.line })}
               />
-            ))}
+              <MarketBtn
+                side={`under ${match.totals1h.line}`}
+                odds={match.totals1h.under}
+                onClick={() => onPick(match, { market: "totals1h", outcome: "under", line: match.totals1h!.line })}
+              />
+            </MarketSection>
+          )}
+          {hasAh && (
+            <MarketSection title="handicap">
+              {match.ah!.map((l) => (
+                <div key={l.line} className={styles.mkPair}>
+                  <MarketBtn
+                    side={`${match.home.toLowerCase()} ${l.line > 0 ? "+" : ""}${l.line}`}
+                    odds={l.home}
+                    onClick={() => onPick(match, { market: "ah", outcome: "home", line: l.line })}
+                  />
+                  <MarketBtn
+                    side={`${match.away.toLowerCase()} ${l.line === 0 ? "0" : l.line > 0 ? `-${l.line}` : `+${Math.abs(l.line)}`}`}
+                    odds={l.away}
+                    onClick={() => onPick(match, { market: "ah", outcome: "away", line: l.line })}
+                  />
+                </div>
+              ))}
+            </MarketSection>
+          )}
         </div>
       )}
 

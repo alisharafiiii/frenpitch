@@ -225,62 +225,76 @@
   flex-basis: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
   margin-top: 6px;
-  padding-top: 8px;
+  padding-top: 10px;
   border-top: 1px dashed var(--tma-border);
   will-change: transform, opacity;
   animation: curtain 0.3s cubic-bezier(0.22, 0.9, 0.35, 1) both;
 }
 
-.totalsRow {
-  flex-basis: 100%;
+.mkSection {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 6px;
-  margin-top: 6px;
 }
 
-.totalsChip {
-  font-size: 9.5px;
+.mkHead {
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  color: var(--tma-fg-dim);
-  white-space: nowrap;
-  padding: 0 4px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tma-fg-muted);
+  padding-left: 2px;
 }
 
-.totalsBtn {
-  flex: 1;
+.mkGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.mkPair {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.mkBtn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 8px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--tma-border);
   border-radius: 10px;
-  padding: 6px 4px;
+  padding: 9px 12px;
   color: var(--tma-fg);
-  min-height: 34px;
+  min-height: 40px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.totalsBtn:active {
+.mkBtn:active {
   border-color: var(--tma-primary);
   box-shadow: 0 0 12px var(--tma-primary-glow);
 }
 
-.totalsSide {
-  font-size: 9.5px;
+.mkSide {
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--tma-fg-muted);
+  color: var(--tma-fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.totalsOdds {
-  font-size: 13px;
+.mkOdds {
+  font-size: 14px;
   font-weight: 800;
+  color: var(--tma-primary);
 }
 
 /* ---- live win probability meter ---- */
