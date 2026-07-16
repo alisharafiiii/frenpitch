@@ -146,6 +146,7 @@ struct MatchState {
   int  scoreH = 0, scoreA = 0, minute = 0;
   float oddsH = 0, oddsD = 0, oddsA = 0;
   int  probH = 0, probA = 0;
+  int  dirH = 0, dirA = 0;   // last odds move: 1 up, -1 down, 0 flat
   bool live = false;
 } match;
 
@@ -186,13 +187,14 @@ static void centerText(const char* s, int y, uint16_t col, int size) {
 
 // ================= frames =================
 
-// flags: 3 color bands per country — kept as 24-bit so they can be
-// dimmed for the dissolve effect on the info panel
-struct FlagDef { const char* code; uint32_t a, b, c; };
+// flags: real shapes, not just bands — vertical / horizontal tricolors,
+// st george cross, nordic cross, disc-on-field. colors kept 24-bit.
+enum FlagStyle { FV, FH, FCROSS, FNORDIC, FCIRC };
+struct FlagDef { const char* code; FlagStyle style; uint32_t a, b, c; };
 static FlagDef FLAG_TABLE[40];
 static int FLAG_N = 0;
-static void addFlag(const char* code, uint32_t a, uint32_t b, uint32_t c) {
-  FLAG_TABLE[FLAG_N++] = { code, a, b, c };
+static void addFlag(const char* code, FlagStyle st, uint32_t a, uint32_t b, uint32_t c) {
+  FLAG_TABLE[FLAG_N++] = { code, st, a, b, c };
 }
 static inline uint16_t rgb565(uint32_t rgb, float dim = 1.0f) {
   return M5.Display.color565(
@@ -206,46 +208,82 @@ static const FlagDef* findFlag(const char* code) {
   return nullptr;
 }
 static void initFlags() {
-  addFlag("NOR", 0xEF2B2D, 0xFFFFFF, 0x002868);
-  addFlag("ENG", 0xFFFFFF, 0xCE1124, 0xFFFFFF);
-  addFlag("FRA", 0x0055A4, 0xFFFFFF, 0xEF4135);
-  addFlag("ESP", 0xAA151B, 0xF1BF00, 0xAA151B);
-  addFlag("BRA", 0x009C3B, 0xFFDF00, 0x002776);
-  addFlag("ARG", 0x74ACDF, 0xFFFFFF, 0x74ACDF);
-  addFlag("GER", 0x000000, 0xDD0000, 0xFFCE00);
-  addFlag("ITA", 0x009246, 0xFFFFFF, 0xCE2B37);
-  addFlag("POR", 0x006600, 0xFF0000, 0xFF0000);
-  addFlag("NED", 0xAE1C28, 0xFFFFFF, 0x21468B);
-  addFlag("BEL", 0x000000, 0xFDDA24, 0xEF3340);
-  addFlag("CRO", 0xFF0000, 0xFFFFFF, 0x171796);
-  addFlag("MAR", 0xC1272D, 0x006233, 0xC1272D);
-  addFlag("JAP", 0xFFFFFF, 0xBC002D, 0xFFFFFF);
-  addFlag("SOU", 0xFFFFFF, 0x0047A0, 0xCD2E3A);
-  addFlag("USA", 0xB22234, 0xFFFFFF, 0x3C3B6E);
-  addFlag("MEX", 0x006847, 0xFFFFFF, 0xCE1126);
-  addFlag("CAN", 0xFF0000, 0xFFFFFF, 0xFF0000);
-  addFlag("URU", 0x74ACDF, 0xFFFFFF, 0x74ACDF);
-  addFlag("COL", 0xFCD116, 0x003893, 0xCE1126);
-  addFlag("SEN", 0x00853F, 0xFDEF42, 0xE31B23);
-  addFlag("GHA", 0xCE1126, 0xFCD116, 0x006B3F);
-  addFlag("AUS", 0x00008B, 0xFFFFFF, 0xFF0000);
-  addFlag("VIE", 0xDA251D, 0xFFFF00, 0xDA251D);
-  addFlag("MYA", 0xFECB00, 0x34B233, 0xEA2839);
-  addFlag("IND", 0xFF9933, 0xFFFFFF, 0x138808);
-  addFlag("NEW", 0x00247D, 0xFFFFFF, 0xCC142B);
+  addFlag("NOR", FNORDIC, 0xEF2B2D, 0xFFFFFF, 0x002868);
+  addFlag("ENG", FCROSS, 0xF5F5F5, 0xCE1124, 0);
+  addFlag("FRA", FV, 0x0055A4, 0xFFFFFF, 0xEF4135);
+  addFlag("ESP", FH, 0xAA151B, 0xF1BF00, 0xAA151B);
+  addFlag("SPA", FH, 0xAA151B, 0xF1BF00, 0xAA151B);
+  addFlag("BRA", FCIRC, 0x009C3B, 0xFFDF00, 0);
+  addFlag("ARG", FH, 0x74ACDF, 0xFFFFFF, 0x74ACDF);
+  addFlag("GER", FH, 0x000000, 0xDD0000, 0xFFCE00);
+  addFlag("ITA", FV, 0x009246, 0xFFFFFF, 0xCE2B37);
+  addFlag("POR", FV, 0x006600, 0xFF0000, 0xFF0000);
+  addFlag("NED", FH, 0xAE1C28, 0xFFFFFF, 0x21468B);
+  addFlag("BEL", FV, 0x000000, 0xFDDA24, 0xEF3340);
+  addFlag("CRO", FH, 0xFF0000, 0xFFFFFF, 0x171796);
+  addFlag("MAR", FCIRC, 0xC1272D, 0x006233, 0);
+  addFlag("JAP", FCIRC, 0xF5F5F5, 0xBC002D, 0);
+  addFlag("SOU", FCIRC, 0xF5F5F5, 0xCD2E3A, 0);
+  addFlag("USA", FH, 0xB22234, 0xFFFFFF, 0x3C3B6E);
+  addFlag("MEX", FV, 0x006847, 0xFFFFFF, 0xCE1126);
+  addFlag("CAN", FV, 0xFF0000, 0xFFFFFF, 0xFF0000);
+  addFlag("URU", FH, 0xFFFFFF, 0x74ACDF, 0xFFFFFF);
+  addFlag("COL", FH, 0xFCD116, 0x003893, 0xCE1126);
+  addFlag("SEN", FV, 0x00853F, 0xFDEF42, 0xE31B23);
+  addFlag("GHA", FH, 0xCE1126, 0xFCD116, 0x006B3F);
+  addFlag("AUS", FCIRC, 0x00247D, 0xF5F5F5, 0);
+  addFlag("VIE", FCIRC, 0xDA251D, 0xFFFF00, 0);
+  addFlag("MYA", FH, 0xFECB00, 0x34B233, 0xEA2839);
+  addFlag("IND", FH, 0xFF9933, 0xFFFFFF, 0x138808);
+  addFlag("NEW", FCIRC, 0x00247D, 0xCC142B, 0);
 }
+
+/** styled flag renderer — exact shapes at any size */
 static void drawFlag(int x, int y, int w, int h, const char* code) {
   const FlagDef* f = findFlag(code);
-  if (f) {
-    int band = w / 3;
-    M5.Display.fillRect(x, y, band, h, rgb565(f->a));
-    M5.Display.fillRect(x + band, y, band, h, rgb565(f->b));
-    M5.Display.fillRect(x + 2 * band, y, w - 2 * band, h, rgb565(f->c));
-    M5.Display.drawRect(x, y, w, h, C_DIM);
+  if (!f) {
+    M5.Display.fillCircle(x + w / 2, y + h / 2, h / 2, C_DIM);
     return;
   }
-  // unknown team: neutral globe dot
-  M5.Display.fillCircle(x + w / 2, y + h / 2, h / 2, C_DIM);
+  switch (f->style) {
+    case FV: {
+      int band = w / 3;
+      M5.Display.fillRect(x, y, band, h, rgb565(f->a));
+      M5.Display.fillRect(x + band, y, band, h, rgb565(f->b));
+      M5.Display.fillRect(x + 2 * band, y, w - 2 * band, h, rgb565(f->c));
+      break;
+    }
+    case FH: {
+      int band = h / 3;
+      M5.Display.fillRect(x, y, w, band, rgb565(f->a));
+      M5.Display.fillRect(x, y + band, w, band, rgb565(f->b));
+      M5.Display.fillRect(x, y + 2 * band, w, h - 2 * band, rgb565(f->c));
+      break;
+    }
+    case FCROSS: { // st george: field + centered cross
+      M5.Display.fillRect(x, y, w, h, rgb565(f->a));
+      int t = h / 5;
+      M5.Display.fillRect(x, y + (h - t) / 2, w, t, rgb565(f->b));
+      M5.Display.fillRect(x + (w - t) / 2, y, t, h, rgb565(f->b));
+      break;
+    }
+    case FNORDIC: { // field + offset white outer cross + colored inner
+      M5.Display.fillRect(x, y, w, h, rgb565(f->a));
+      int cxp = x + w * 2 / 5;
+      int to = h / 3, ti = h / 6;
+      M5.Display.fillRect(x, y + (h - to) / 2, w, to, rgb565(f->b));
+      M5.Display.fillRect(cxp - to / 2, y, to, h, rgb565(f->b));
+      M5.Display.fillRect(x, y + (h - ti) / 2, w, ti, rgb565(f->c));
+      M5.Display.fillRect(cxp - ti / 2, y, ti, h, rgb565(f->c));
+      break;
+    }
+    case FCIRC: { // field + centered disc
+      M5.Display.fillRect(x, y, w, h, rgb565(f->a));
+      M5.Display.fillCircle(x + w / 2, y + h / 2, h / 3, rgb565(f->b));
+      break;
+    }
+  }
+  M5.Display.drawRect(x, y, w, h, M5.Display.color565(60, 60, 70));
 }
 
 // fake-bold: draw twice with 1px offset
@@ -283,103 +321,116 @@ static void drawScoreStrip() {
     M5.Display.drawString(m, W / 2, 26);
   }
 }
-/** the locked info frame (v5): top 40% of each half = the flag laid
- *  HORIZONTAL, dissolving into black (stepped dim bands — lcd has no
- *  alpha), then a huge score digit, big odds, big win %. minute lives
- *  in the gutter in glowing matrix green with a live dot. */
-static void drawTeamPanel(int x0, int w, bool homeSide) {
-  uint16_t accent = homeSide ? C_GREEN : C_PURPLE;
-  const char* code = homeSide ? match.home : match.away;
-  int cx = x0 + w / 2;
-
-  // flag zone: 96px tall, 3 horizontal stripes, each split into 4
-  // rows of decreasing brightness → dissolve-to-black finish
-  const int FH = 96;
-  const FlagDef* f = findFlag(code);
-  const float dims[4] = { 0.85f, 0.62f, 0.38f, 0.16f };
-  if (f) {
-    const uint32_t cols[3] = { f->a, f->b, f->c };
-    int stripe = FH / 3;
-    for (int s = 0; s < 3; s++) {
-      int row = stripe / 4;
-      for (int r = 0; r < 4; r++) {
-        int y = s * stripe + r * row;
-        int h = (r == 3) ? (s + 1) * stripe - y : row; // fill remainder
-        M5.Display.fillRect(x0, y, w, h, rgb565(cols[s], dims[r] * (1.0f - 0.18f * s)));
-      }
-    }
-  } else {
-    M5.Display.fillRect(x0, 0, w, FH, C_DIM);
-  }
-
-  // team code on the flag — white with black outline so any flag works
-  M5.Display.setTextSize(3);
-  M5.Display.setTextDatum(top_center);
-  M5.Display.setTextColor(TFT_BLACK);
-  for (int dx = -1; dx <= 1; dx++)
-    for (int dy = -1; dy <= 1; dy++)
-      if (dx || dy) M5.Display.drawString(code, cx + dx, 8 + dy);
-  M5.Display.setTextColor(TFT_WHITE);
-  M5.Display.drawString(code, cx, 8);
-
-  // giant score digit riding the dissolve seam
-  char buf[16];
-  M5.Display.setTextDatum(top_center);
-  if (match.live || match.scoreH + match.scoreA > 0) {
-    snprintf(buf, sizeof(buf), "%d", homeSide ? match.scoreH : match.scoreA);
-    M5.Display.setTextSize(9);
-    M5.Display.setTextColor(TFT_WHITE, C_BG);
-    M5.Display.drawString(buf, cx, 86);
-  } else {
-    M5.Display.setTextSize(7);
-    M5.Display.setTextColor(C_DIM, C_BG);
-    M5.Display.drawString("-", cx, 96);
-  }
-
-  // big odds + win %
-  float o = homeSide ? match.oddsH : match.oddsA;
-  if (o > 0) {
-    snprintf(buf, sizeof(buf), "%.2f", o);
-    M5.Display.setTextSize(4);
-    M5.Display.setTextColor(accent, C_BG);
-    M5.Display.drawString(buf, cx, 164);
-  }
-  int p = homeSide ? match.probH : match.probA;
-  if (p > 0) {
-    snprintf(buf, sizeof(buf), "%d%%", p);
-    M5.Display.setTextSize(3);
-    M5.Display.setTextColor(accent, C_BG);
-    M5.Display.drawString(buf, cx, 204);
+/** the locked info frame — matched to the approved render:
+ *  ● LIVE   64'   ⚽
+ *  [fra flag]   [eng flag]
+ *     FRA          ENG
+ *      2     -      1        (home score in lime, away in white)
+ *  ▪▪▪▪▪▪▪▪▪|▫▫▫▫▫▫          (segmented win-prob bar, center tick)
+ *  ───────────────────
+ *   2.06  ▲FRA │ 3.77 ▼ENG   (odds + move-direction arrows)      */
+static void drawBallIcon(int cx, int cy, int r) {
+  M5.Display.fillCircle(cx, cy, r, TFT_WHITE);
+  M5.Display.drawCircle(cx, cy, r, TFT_BLACK);
+  M5.Display.fillCircle(cx, cy, r / 3, TFT_BLACK);
+  for (int i = 0; i < 5; i++) {
+    float a = i * 1.2566f - 1.5708f;
+    M5.Display.fillCircle(cx + (int)(cosf(a) * r * 0.66f), cy + (int)(sinf(a) * r * 0.66f), r / 5, TFT_BLACK);
   }
 }
 
-static void drawInfoPanel() {
-  M5.Display.fillScreen(C_BG);
-  int W = M5.Display.width();
-  const int GUT = 52;
-  int half = (W - GUT) / 2;
-  drawTeamPanel(0, half, true);
-  drawTeamPanel(W - half, half, false);
+static void drawArrow(int x, int y, int dir, uint16_t up, uint16_t down) {
+  if (dir > 0) M5.Display.fillTriangle(x, y + 8, x + 8, y + 8, x + 4, y, up);
+  else if (dir < 0) M5.Display.fillTriangle(x, y, x + 8, y, x + 4, y + 8, down);
+}
 
-  // gutter: big matrix-green minute + live dot, divider below
-  uint16_t mint = M5.Display.color565(57, 255, 136);
-  M5.Display.fillRect(half, 0, GUT, M5.Display.height(), C_BG);
-  M5.Display.setTextDatum(middle_center);
+static void drawInfoPanel() {
+  int W = M5.Display.width();
+  int cxl = W / 4 + 4, cxr = 3 * W / 4 - 4;
+  uint16_t lime = M5.Display.color565(154, 235, 62);
+  uint16_t gray = M5.Display.color565(90, 90, 100);
+  uint16_t dimline = M5.Display.color565(46, 46, 56);
+  uint16_t red = M5.Display.color565(232, 90, 40);
+  M5.Display.fillScreen(C_BG);
+  char buf[16];
+
+  // ── top status row
+  M5.Display.setTextDatum(top_left);
+  M5.Display.setTextSize(2);
   if (match.live) {
-    char m[8];
-    snprintf(m, sizeof(m), "%d'", match.minute);
-    M5.Display.setTextSize(3);
-    M5.Display.setTextColor(mint, C_BG);
-    M5.Display.drawString(m, W / 2, 104);
-    M5.Display.fillCircle(W / 2 - 16, 134, 3, mint);
-    M5.Display.setTextSize(1);
-    M5.Display.drawString("LIVE", W / 2 + 6, 134);
+    M5.Display.fillCircle(18, 16, 5, lime);
+    M5.Display.setTextColor(lime, C_BG);
+    M5.Display.drawString("LIVE", 30, 9);
+    snprintf(buf, sizeof(buf), "%d'", match.minute);
+    M5.Display.setTextDatum(top_center);
+    M5.Display.drawString(buf, W / 2 + 10, 9);
   } else {
-    M5.Display.setTextSize(3);
-    M5.Display.setTextColor(C_DIM, C_BG);
-    M5.Display.drawString("vs", W / 2, 104);
+    M5.Display.setTextColor(gray, C_BG);
+    M5.Display.drawString("UPCOMING", 14, 9);
   }
-  M5.Display.drawFastVLine(W / 2, 152, 40, M5.Display.color565(38, 38, 47));
+  drawBallIcon(W - 22, 16, 11);
+
+  // ── flags + codes
+  drawFlag(cxl - 27, 34, 54, 34, match.home);
+  drawFlag(cxr - 27, 34, 54, 34, match.away);
+  M5.Display.setTextDatum(top_center);
+  M5.Display.setTextSize(3);
+  M5.Display.setTextColor(TFT_WHITE, C_BG);
+  M5.Display.drawString(match.home, cxl, 76);
+  M5.Display.drawString(match.away, cxr, 76);
+
+  // ── score (home lime, away white, gray dash)
+  M5.Display.setTextSize(7);
+  if (match.live || match.scoreH + match.scoreA > 0) {
+    snprintf(buf, sizeof(buf), "%d", match.scoreH);
+    M5.Display.setTextColor(lime, C_BG);
+    M5.Display.drawString(buf, cxl, 104);
+    snprintf(buf, sizeof(buf), "%d", match.scoreA);
+    M5.Display.setTextColor(TFT_WHITE, C_BG);
+    M5.Display.drawString(buf, cxr, 104);
+    M5.Display.setTextSize(4);
+    M5.Display.setTextColor(gray, C_BG);
+    M5.Display.drawString("-", W / 2, 116);
+  } else {
+    M5.Display.setTextSize(4);
+    M5.Display.setTextColor(gray, C_BG);
+    M5.Display.drawString("vs", W / 2, 116);
+  }
+
+  // ── segmented win-prob bar (lime | gray draw | white)
+  if (match.probH + match.probA > 0) {
+    const int SEG = 24, SW = 9, GAP = 3, y = 166, sh = 9;
+    int x0 = (W - SEG * (SW + GAP) + GAP) / 2;
+    int draw = 100 - match.probH - match.probA;
+    int nH = (match.probH * SEG + 50) / 100;
+    int nD = (draw * SEG + 50) / 100;
+    for (int i = 0; i < SEG; i++) {
+      uint16_t col = i < nH ? lime : i < nH + nD ? dimline : TFT_WHITE;
+      M5.Display.fillRect(x0 + i * (SW + GAP), y, SW, sh, col);
+    }
+    M5.Display.drawFastVLine(W / 2, y - 3, sh + 6, lime); // center tick
+  }
+
+  // ── divider
+  M5.Display.drawFastHLine(14, 188, W - 28, dimline);
+  M5.Display.drawFastVLine(W / 2, 196, 38, dimline);
+
+  // ── odds row + direction arrows
+  if (match.oddsH > 0) {
+    M5.Display.setTextSize(3);
+    snprintf(buf, sizeof(buf), "%.2f", match.oddsH);
+    M5.Display.setTextColor(lime, C_BG);
+    M5.Display.drawString(buf, cxl, 198);
+    snprintf(buf, sizeof(buf), "%.2f", match.oddsA);
+    M5.Display.setTextColor(TFT_WHITE, C_BG);
+    M5.Display.drawString(buf, cxr, 198);
+    M5.Display.setTextSize(1);
+    M5.Display.setTextColor(gray, C_BG);
+    drawArrow(cxl - 22, 226, match.dirH ? match.dirH : 1, lime, red);
+    M5.Display.drawString(match.home, cxl + 12, 226);
+    drawArrow(cxr - 22, 226, match.dirA ? match.dirA : -1, lime, red);
+    M5.Display.drawString(match.away, cxr + 12, 226);
+  }
 }
 
 // ================= voice (elevenlabs via our server) =================
@@ -537,9 +588,12 @@ static void handleEvent(JsonDocument& doc) {
 
   if (!strcmp(type, "odds_move")) {
     float prevH = match.oddsH;
+    float prevA = match.oddsA;
     match.oddsH = doc["odds"]["home"] | match.oddsH;
     match.oddsD = doc["odds"]["draw"] | match.oddsD;
     match.oddsA = doc["odds"]["away"] | match.oddsA;
+    if (prevH > 0 && match.oddsH != prevH) match.dirH = match.oddsH > prevH ? 1 : -1;
+    if (prevA > 0 && match.oddsA != prevA) match.dirA = match.oddsA > prevA ? 1 : -1;
     if (doc["probs"]["home"].is<int>()) { match.probH = doc["probs"]["home"]; match.probA = doc["probs"]["away"]; }
     if (match.live && prevH > 0 && fabsf(prevH - match.oddsH) >= 0.05f)
       seqOddsMove(prevH, match.oddsH, match.home);
@@ -639,9 +693,11 @@ static void runDemoStep() {
   match.live = true;
   switch (step % 6) {
     case 0: match.minute = 12; match.oddsH = 2.10f; match.oddsD = 3.40f; match.oddsA = 3.10f;
-            match.probH = 62; match.probA = 38; next = millis() + 6000; break;
+            match.probH = 62; match.probA = 33; next = millis() + 6000; break;
     case 1: match.minute = 23; match.scoreH = 1; seqGoal(); next = millis() + 8000; break;
-    case 2: match.minute = 41; seqOddsMove(2.10f, 1.85f, match.home); next = millis() + 7000; break;
+    case 2: match.minute = 41; match.oddsH = 1.85f; match.oddsA = 3.77f;
+            match.dirH = -1; match.dirA = 1;
+            seqOddsMove(2.10f, 1.85f, match.home); next = millis() + 7000; break;
     case 3: match.minute = 55; seqYellow(); next = millis() + 8000; break;
     case 4: match.minute = 70; seqRed(); next = millis() + 8000; break;
     case 5: match.minute = 90; match.scoreA = 1;
