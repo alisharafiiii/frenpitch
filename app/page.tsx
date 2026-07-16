@@ -20,6 +20,17 @@ interface ServerPick {
   lockedOdds: number;
   stake: number;
   status: "open" | "won" | "lost" | "push";
+  createdAt?: number;
+}
+
+/** "today" = still open (sweating) or placed since local midnight.
+ *  settled picks from previous days live in the profile history. */
+function isTodayPick(p: ServerPick): boolean {
+  if (p.status === "open") return true;
+  if (!p.createdAt) return false;
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  return p.createdAt >= midnight.getTime();
 }
 
 function toUiPick(p: ServerPick): Pick {
@@ -61,7 +72,7 @@ export default function HomePage() {
   useEffect(() => {
     if (meData) {
       setBankroll(meData.user.bankroll);
-      setMyPicks(meData.picks.map(toUiPick));
+      setMyPicks(meData.picks.filter(isTodayPick).map(toUiPick));
     }
   }, [meData]);
 
