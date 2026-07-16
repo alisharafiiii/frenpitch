@@ -1,13 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import type { Match, PickOutcome } from "@/app/types";
 import styles from "./odds.module.css";
 import ui from "@/app/styles/ui.module.css";
 
-/** what the user tapped: a 1x2 side or a totals side */
+/** what the user tapped: market + side (+ line for totals/ah) */
 export interface Selection {
-  market: "1x2" | "totals";
+  market: "1x2" | "totals" | "totals1h" | "ah";
   outcome: PickOutcome;
+  line?: number;
 }
 
 const RING_COLORS = [
@@ -82,6 +84,33 @@ function IconBolt() {
   );
 }
 
+/** one expandable market row: label + two price buttons */
+function TwoWayRow({
+  label,
+  a,
+  b,
+  onPick,
+}: {
+  label: string;
+  a: { name: string; odds: number };
+  b: { name: string; odds: number };
+  onPick: (side: "a" | "b") => void;
+}) {
+  return (
+    <div className={styles.totalsRow}>
+      <span className={styles.totalsChip}>{label}</span>
+      <button className={styles.totalsBtn} onClick={() => onPick("a")}>
+        <span className={styles.totalsSide}>{a.name}</span>
+        <span className={`${styles.totalsOdds} ${ui.num}`}>{a.odds.toFixed(2)}</span>
+      </button>
+      <button className={styles.totalsBtn} onClick={() => onPick("b")}>
+        <span className={styles.totalsSide}>{b.name}</span>
+        <span className={`${styles.totalsOdds} ${ui.num}`}>{b.odds.toFixed(2)}</span>
+      </button>
+    </div>
+  );
+}
+
 export function OddsCard({
   match,
   onPick,
@@ -96,15 +125,20 @@ export function OddsCard({
     { key: "draw", label: "DRAW" },
     { key: "away", label: match.away },
   ];
+  const [expanded, setExpanded] = useState(false);
   const isLive = match.status === "live" || match.status === "ht";
   const hasOdds = match.odds.home > 0;
   const showMeter = isLive && match.probs;
   const hasTotals = !!match.totals && match.totals.over > 1;
+  const hasTotals1h = !!match.totals1h && match.totals1h.over > 1;
+  const hasAh = !!match.ah && match.ah.length > 0;
+  const hasMore = hasTotals || hasTotals1h || hasAh;
 
   return (
     <div
-      className={`${styles.card} ${showMeter || hasTotals ? styles.cardWithMeter : ""}`}
+      className={`${styles.card} ${showMeter || hasMore ? styles.cardWithMeter : ""}`}
       style={{ animationDelay: `${index * 0.055}s` }}
+      onClick={() => hasMore && setExpanded(!expanded)}
     >
       {/* teams */}
       <div className={styles.teams}>
@@ -134,7 +168,10 @@ export function OddsCard({
               key={o.key}
               className={styles.oddsBox}
               disabled={empty}
-              onClick={() => onPick(match, { market: "1x2", outcome: o.key })}
+              onClick={(ev) => {
+                ev.stopPropagation();
+                onPick(match, { market: "1x2", outcome: o.key });
+              }}
             >
               <span className={styles.oddsLabel}>{o.label}</span>
               <span className={`${styles.oddsValue} ${ui.num} ${empty ? styles.soon : ""}`}>
@@ -179,26 +216,51 @@ export function OddsCard({
         )}
       </div>
 
-      {/* over/under total goals — the most balanced clean line from txline */}
-      {hasTotals && match.totals && (
-        <div className={styles.totalsRow}>
-          <span className={styles.totalsChip}>
-            O/U <span className={ui.num}>{match.totals.line}</span> goals
+      {/* tap the card → every market txline prices for this fixture */}
+      {hasMore && (
+        <div className={styles.moreHint}>
+          <span className={styles.moreChevron} style={{ transform: expanded ? "rotate(180deg)" : undefined }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
           </span>
-          <button
-            className={styles.totalsBtn}
-            onClick={() => onPick(match, { market: "totals", outcome: "over" })}
-          >
-            <span className={styles.totalsSide}>over</span>
-            <span className={`${styles.totalsOdds} ${ui.num}`}>{match.totals.over.toFixed(2)}</span>
-          </button>
-          <button
-            className={styles.totalsBtn}
-            onClick={() => onPick(match, { market: "totals", outcome: "under" })}
-          >
-            <span className={styles.totalsSide}>under</span>
-            <span className={`${styles.totalsOdds} ${ui.num}`}>{match.totals.under.toFixed(2)}</span>
-          </button>
+          {expanded ? "less" : "more lines"}
+        </div>
+      )}
+      {expanded && (
+        <div className={styles.marketsPanel} onClick={(ev) => ev.stopPropagation()}>
+          {hasTotals && match.totals && (
+            <TwoWayRow
+              label={`o/u ${match.totals.line} goals`}
+              a={{ name: "over", odds: match.totals.over }}
+              b={{ name: "under", odds: match.totals.under }}
+              onPick={(side) =>
+                onPick(match, { market: "totals", outcome: side === "a" ? "over" : "under", line: match.totals!.line })
+              }
+            />
+          )}
+          {hasTotals1h && match.totals1h && (
+            <TwoWayRow
+              label={`1h o/u ${match.totals1h.line}`}
+              a={{ name: "over", odds: match.totals1h.over }}
+              b={{ name: "under", odds: match.totals1h.under }}
+              onPick={(side) =>
+                onPick(match, { market: "totals1h", outcome: side === "a" ? "over" : "under", line: match.totals1h!.line })
+              }
+            />
+          )}
+          {hasAh &&
+            match.ah!.map((l) => (
+              <TwoWayRow
+                key={l.line}
+                label={`handicap ${l.line > 0 ? "+" : ""}${l.line}`}
+                a={{ name: match.home.toLowerCase(), odds: l.home }}
+                b={{ name: match.away.toLowerCase(), odds: l.away }}
+                onPick={(side) =>
+                  onPick(match, { market: "ah", outcome: side === "a" ? "home" : "away", line: l.line })
+                }
+              />
+            ))}
         </div>
       )}
 

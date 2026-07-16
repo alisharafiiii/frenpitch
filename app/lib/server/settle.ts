@@ -22,6 +22,8 @@ type Raw = Record<string, unknown>;
 interface MatchResult {
   outcome: Outcome;
   totalGoals: number | null; // null = unknown (admin-forced, no score)
+  goalDiff: number | null; // home - away (for asian handicap)
+  htTotalGoals: number | null; // first-half total (for 1H totals)
 }
 
 /** verified against real feed (NOR-ENG 2026-07-11):
@@ -60,7 +62,22 @@ async function fetchResult(matchId: string): Promise<MatchResult | null> {
   });
   if (!finished) return null;
 
-  // score from the most recent entry that carries Stats
+  // half-time score: the halftime_finalised entry (StatusId 3) carries
+  // the 1H score in its flat Stats — verified on FRA-ESP 2026-07-15
+  let htTotalGoals: number | null = null;
+  for (const e of sorted) {
+    const status = Number(pick<number | string>(e, "StatusId") ?? -1);
+    const action = String(pick<string>(e, "Action") ?? "").toLowerCase();
+    if (status === 3 || action.includes("halftime")) {
+      const stats = pick<Record<string, number>>(e, "Stats", "stats");
+      if (stats && stats["1"] !== undefined && stats["2"] !== undefined) {
+        htTotalGoals = Number(stats["1"]) + Number(stats["2"]);
+        break;
+      }
+    }
+  }
+
+  // final score from the most recent entry that carries Stats
   for (const e of sorted) {
     const stats = pick<Record<string, number>>(e, "Stats", "stats");
     if (stats && stats["1"] !== undefined && stats["2"] !== undefined) {
@@ -69,6 +86,8 @@ async function fetchResult(matchId: string): Promise<MatchResult | null> {
       return {
         outcome: s1 > s2 ? "home" : s1 < s2 ? "away" : "draw",
         totalGoals: s1 + s2,
+        goalDiff: s1 - s2,
+        htTotalGoals,
       };
     }
   }
@@ -78,13 +97,21 @@ async function fetchResult(matchId: string): Promise<MatchResult | null> {
 /** did this pick win / lose / push against the final result?
  *  null = cannot resolve yet (totals pick + forced result without score) */
 function grade(p: PickRecord, r: MatchResult): "won" | "lost" | "push" | null {
-  if (p.market === "totals") {
-    if (r.totalGoals === null) return null;
-    const line = Number(p.line);
-    if (!Number.isFinite(line)) return null;
-    if (r.totalGoals === line) return "push"; // whole line landed exactly
-    const overWon = r.totalGoals > line;
+  const line = Number(p.line);
+  if (p.market === "totals" || p.market === "totals1h") {
+    const total = p.market === "totals1h" ? r.htTotalGoals : r.totalGoals;
+    if (total === null || !Number.isFinite(line)) return null;
+    if (total === line) return "push"; // whole line landed exactly
+    const overWon = total > line;
     return (p.outcome === "over") === overWon ? "won" : "lost";
+  }
+  if (p.market === "ah") {
+    if (r.goalDiff === null || !Number.isFinite(line)) return null;
+    // line applies to home: adjusted = (home - away) + line
+    const adjusted = r.goalDiff + line;
+    if (adjusted === 0) return "push"; // line 0 (or whole) + level result
+    const homeCovered = adjusted > 0;
+    return (p.outcome === "home") === homeCovered ? "won" : "lost";
   }
   return p.outcome === r.outcome ? "won" : "lost";
 }
@@ -156,7 +183,12 @@ export async function settleAll(opts: { force?: boolean } = {}): Promise<SettleR
     if (forced === "home" || forced === "draw" || forced === "away") {
       // forced results carry no score — try to enrich with the real one
       const real = await fetchResult(matchId);
-      result = { outcome: forced, totalGoals: real?.totalGoals ?? null };
+      result = {
+        outcome: forced,
+        totalGoals: real?.totalGoals ?? null,
+        goalDiff: real?.goalDiff ?? null,
+        htTotalGoals: real?.htTotalGoals ?? null,
+      };
     } else {
       result = await fetchResult(matchId);
     }

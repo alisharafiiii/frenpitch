@@ -39,7 +39,7 @@ interface PickRow {
   matchLabel: string;
   outcome: "home" | "draw" | "away" | "over" | "under";
   outcomeLabel: string;
-  market?: "1x2" | "totals";
+  market?: "1x2" | "totals" | "totals1h" | "ah";
   line?: number;
   lockedOdds: number;
   stake: number;

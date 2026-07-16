@@ -13,13 +13,20 @@ export async function POST(req: Request) {
   const body = (await req.json()) as Partial<PickRecord>;
   const stake = Number(body.stake);
   const lockedOdds = Number(body.lockedOdds);
-  const market = body.market === "totals" ? "totals" : "1x2";
+  const market: NonNullable<PickRecord["market"]> =
+    body.market === "totals" || body.market === "totals1h" || body.market === "ah"
+      ? body.market
+      : "1x2";
 
-  const validOutcome =
-    market === "totals"
-      ? body.outcome === "over" || body.outcome === "under"
+  const isTotals = market === "totals" || market === "totals1h";
+  const validOutcome = isTotals
+    ? body.outcome === "over" || body.outcome === "under"
+    : market === "ah"
+      ? body.outcome === "home" || body.outcome === "away"
       : body.outcome === "home" || body.outcome === "draw" || body.outcome === "away";
   const line = Number(body.line);
+  const needsLine = market !== "1x2";
+  const validLine = isTotals ? Number.isFinite(line) && line > 0 : Number.isFinite(line);
   if (
     !body.matchId ||
     !validOutcome ||
@@ -27,7 +34,7 @@ export async function POST(req: Request) {
     stake <= 0 ||
     !lockedOdds ||
     lockedOdds <= 1 ||
-    (market === "totals" && (!Number.isFinite(line) || line <= 0))
+    (needsLine && !validLine)
   ) {
     return NextResponse.json({ error: "invalid pick" }, { status: 400 });
   }
@@ -43,7 +50,7 @@ export async function POST(req: Request) {
     outcome: body.outcome as PickRecord["outcome"],
     outcomeLabel: String(body.outcomeLabel ?? body.outcome),
     market,
-    ...(market === "totals" ? { line } : {}),
+    ...(market !== "1x2" ? { line } : {}),
     lockedOdds,
     stake,
     status: "open",

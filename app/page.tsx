@@ -15,7 +15,7 @@ interface ServerPick {
   matchLabel: string;
   outcome: PickOutcome;
   outcomeLabel: string;
-  market?: "1x2" | "totals";
+  market?: "1x2" | "totals" | "totals1h" | "ah";
   line?: number;
   lockedOdds: number;
   stake: number;
@@ -42,7 +42,7 @@ function toUiPick(p: ServerPick): Pick {
   };
 }
 import { OddsCard, type Selection } from "./components/odds/OddsCard";
-import { PickSlip } from "./components/slip/PickSlip";
+import { PickSlip, resolveSelection } from "./components/slip/PickSlip";
 import { Avatar } from "./components/Avatar";
 import { IconFire } from "./components/icons";
 import ui from "@/app/styles/ui.module.css";
@@ -141,9 +141,18 @@ export default function HomePage() {
             next.odds = e.odds;
           }
           if (e.probs) next.probs = e.probs;
-          // totals line moves stream too — keep the same line, refresh prices
+          // market lines stream too — keep the same line, refresh prices
           if (e.totals && (!next.totals || e.totals.line === next.totals.line)) {
             next.totals = e.totals;
+          }
+          if (e.totals1h && (!next.totals1h || e.totals1h.line === next.totals1h.line)) {
+            next.totals1h = e.totals1h;
+          }
+          if (e.ah && e.ah.length > 0) {
+            const merged = new Map((next.ah ?? []).map((l) => [l.line, l]));
+            for (const l of e.ah) if (merged.has(l.line)) merged.set(l.line, l);
+            if (!next.ah || next.ah.length === 0) next.ah = e.ah;
+            else next.ah = [...merged.values()];
           }
           if (e.scoreHome !== undefined && e.scoreAway !== undefined) {
             next.scoreHome = e.scoreHome;
@@ -194,26 +203,22 @@ export default function HomePage() {
   const confirmPick = async (stake: number) => {
     if (!slip) return;
     const { match, sel } = slip;
-    const isTotals = sel.market === "totals";
-    const lockedOdds = isTotals
-      ? sel.outcome === "over"
-        ? (match.totals?.over ?? 0)
-        : (match.totals?.under ?? 0)
-      : match.odds[sel.outcome as "home" | "draw" | "away"];
+    const resolved = resolveSelection(match, sel);
     const body = {
       matchId: match.id,
       matchLabel: `${match.homeFlag} ${match.home.toLowerCase()} vs ${match.away.toLowerCase()}`,
       outcome: sel.outcome,
-      outcomeLabel: isTotals
-        ? `${sel.outcome} ${match.totals?.line} goals`
-        : sel.outcome === "draw"
-          ? "draw"
-          : sel.outcome === "home"
-            ? `${match.home.toLowerCase()} ML`
-            : `${match.away.toLowerCase()} ML`,
+      outcomeLabel:
+        sel.market === "1x2"
+          ? sel.outcome === "draw"
+            ? "draw"
+            : sel.outcome === "home"
+              ? `${match.home.toLowerCase()} ML`
+              : `${match.away.toLowerCase()} ML`
+          : resolved.label.split(" · ")[0],
       market: sel.market,
-      ...(isTotals ? { line: match.totals?.line } : {}),
-      lockedOdds,
+      ...(resolved.line !== undefined ? { line: resolved.line } : {}),
+      lockedOdds: resolved.odds,
       stake,
     };
     try {

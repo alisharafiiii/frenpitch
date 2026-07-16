@@ -183,13 +183,19 @@ export interface TotalsMarket {
   underPct?: number;
 }
 
-export function extractSnapshotTotals(entries: Raw[]): TotalsMarket | null {
+export function extractSnapshotTotals(
+  entries: Raw[],
+  period: "full" | "half1" = "full"
+): TotalsMarket | null {
   if (!Array.isArray(entries)) return null;
   const candidates: (TotalsMarket & { ts: number })[] = [];
   for (const e of entries) {
     const t = pick<string>(e, "SuperOddsType");
     if (!t || !t.includes("OVERUNDER")) continue;
-    if (!isFullMatchPeriod(pick<string>(e, "MarketPeriod"))) continue;
+    const mp = pick<string>(e, "MarketPeriod");
+    const wantHalf = period === "half1";
+    const isHalf = String(mp ?? "").toLowerCase().includes("half=1");
+    if (wantHalf ? !isHalf : !isFullMatchPeriod(mp)) continue;
     const params = String(pick<string>(e, "MarketParameters") ?? "");
     const m = params.match(/line=([\d.]+)/);
     if (!m) continue;
@@ -226,14 +232,57 @@ export function extractSnapshotTotals(entries: Raw[]): TotalsMarket | null {
   return market;
 }
 
-/** totals (over/under) stream update → odds_move event carrying totals.
- *  clean lines only, same rule as the snapshot extractor. */
+/** asian handicap — clean lines only (0 and ±0.5): 0 = draw-no-bet
+ *  (push on draw), ±0.5 never pushes. quarter lines (±0.25/±0.75)
+ *  split the stake across two lines — deliberately not offered. */
+export interface AhLine {
+  line: number; // applies to the home side
+  home: number;
+  away: number;
+}
+
+function cleanAhLine(line: number): boolean {
+  return Number.isInteger(line * 2); // 0, ±0.5, ±1 …
+}
+
+export function extractSnapshotAh(entries: Raw[]): AhLine[] {
+  if (!Array.isArray(entries)) return [];
+  const byLine = new Map<number, AhLine & { ts: number }>();
+  for (const e of entries) {
+    const t = pick<string>(e, "SuperOddsType");
+    if (!t || !t.includes("ASIANHANDICAP")) continue;
+    if (!isFullMatchPeriod(pick<string>(e, "MarketPeriod"))) continue;
+    const m = String(pick<string>(e, "MarketParameters") ?? "").match(/line=(-?[\d.]+)/);
+    if (!m) continue;
+    const line = Number(m[1]);
+    if (!cleanAhLine(line)) continue;
+    const names = (pick<string[]>(e, "PriceNames") ?? []).map((n) => String(n).toLowerCase());
+    const prices = pick<number[]>(e, "Prices") ?? [];
+    const iH = names.indexOf("part1");
+    const iA = names.indexOf("part2");
+    if (iH < 0 || iA < 0 || !prices[iH] || !prices[iA]) continue;
+    const ts = pick<number>(e, "Ts") ?? 0;
+    const cur = byLine.get(line);
+    if (!cur || ts > cur.ts) {
+      byLine.set(line, { line, home: prices[iH] / 1000, away: prices[iA] / 1000, ts });
+    }
+  }
+  return [...byLine.values()]
+    .sort((a, b) => Math.abs(a.home - a.away) - Math.abs(b.home - b.away))
+    .slice(0, 3)
+    .map(({ ts: _ts, ...l }) => l);
+}
+
+/** totals (over/under) stream update → odds_move event carrying totals
+ *  (full match) or totals1h (first half). clean lines only. */
 export function normalizeTotalsUpdate(raw: Raw): MatchEvent | null {
   const fixtureId = pick<number | string>(raw, "FixtureId", "fixtureId");
   if (fixtureId === undefined) return null;
   const t = pick<string>(raw, "SuperOddsType");
   if (!t || !t.includes("OVERUNDER")) return null;
-  if (!isFullMatchPeriod(pick<string>(raw, "MarketPeriod"))) return null;
+  const mp = pick<string>(raw, "MarketPeriod");
+  const isHalf = String(mp ?? "").toLowerCase().includes("half=1");
+  if (!isHalf && !isFullMatchPeriod(mp)) return null;
   const m = String(pick<string>(raw, "MarketParameters") ?? "").match(/line=([\d.]+)/);
   if (!m) return null;
   const line = Number(m[1]);
@@ -244,20 +293,48 @@ export function normalizeTotalsUpdate(raw: Raw): MatchEvent | null {
   const iU = names.indexOf("under");
   if (iO < 0 || iU < 0 || !prices[iO] || !prices[iU]) return null;
   const pct = pick<(number | string)[]>(raw, "Pct");
+  const market = {
+    line,
+    over: prices[iO] / 1000,
+    under: prices[iU] / 1000,
+    ...(pct && pct[iO] !== undefined
+      ? { overPct: Math.round(Number(pct[iO])), underPct: Math.round(Number(pct[iU])) }
+      : {}),
+  };
   return {
     id: `totals-${fixtureId}-${Date.now()}`,
     matchId: String(fixtureId),
     t: Date.now(),
     type: "odds_move",
     minute: pick<number>(raw, "Minute", "minute") ?? 0,
-    totals: {
-      line,
-      over: prices[iO] / 1000,
-      under: prices[iU] / 1000,
-      ...(pct && pct[iO] !== undefined
-        ? { overPct: Math.round(Number(pct[iO])), underPct: Math.round(Number(pct[iU])) }
-        : {}),
-    },
+    ...(isHalf ? { totals1h: market } : { totals: market }),
+    raw,
+  };
+}
+
+/** asian handicap stream update → odds_move carrying one ah line */
+export function normalizeAhUpdate(raw: Raw): MatchEvent | null {
+  const fixtureId = pick<number | string>(raw, "FixtureId", "fixtureId");
+  if (fixtureId === undefined) return null;
+  const t = pick<string>(raw, "SuperOddsType");
+  if (!t || !t.includes("ASIANHANDICAP")) return null;
+  if (!isFullMatchPeriod(pick<string>(raw, "MarketPeriod"))) return null;
+  const m = String(pick<string>(raw, "MarketParameters") ?? "").match(/line=(-?[\d.]+)/);
+  if (!m) return null;
+  const line = Number(m[1]);
+  if (!cleanAhLine(line)) return null;
+  const names = (pick<string[]>(raw, "PriceNames") ?? []).map((n) => String(n).toLowerCase());
+  const prices = pick<number[]>(raw, "Prices") ?? [];
+  const iH = names.indexOf("part1");
+  const iA = names.indexOf("part2");
+  if (iH < 0 || iA < 0 || !prices[iH] || !prices[iA]) return null;
+  return {
+    id: `ah-${fixtureId}-${Date.now()}`,
+    matchId: String(fixtureId),
+    t: Date.now(),
+    type: "odds_move",
+    minute: pick<number>(raw, "Minute", "minute") ?? 0,
+    ah: [{ line, home: prices[iH] / 1000, away: prices[iA] / 1000 }],
     raw,
   };
 }

@@ -36,7 +36,19 @@ export interface Match {
   oddsDelta: Partial<Record<Outcome, number>>; // move over last window
   probs?: Probs;
   /** over/under total goals — the most balanced clean line from txline */
-  totals?: { line: number; over: number; under: number; overPct?: number; underPct?: number };
+  totals?: TotalsLine;
+  /** first-half over/under */
+  totals1h?: TotalsLine;
+  /** asian handicap clean lines (0 / ±0.5 …), line applies to home */
+  ah?: { line: number; home: number; away: number }[];
+}
+
+export interface TotalsLine {
+  line: number;
+  over: number;
+  under: number;
+  overPct?: number;
+  underPct?: number;
 }
 
 /** Normalized event object — the ONE shape every client consumes:
@@ -67,8 +79,10 @@ export interface MatchEvent {
   away?: string;
   odds?: Odds;
   probs?: Probs;
-  /** over/under line carried on totals odds_move events */
-  totals?: { line: number; over: number; under: number; overPct?: number; underPct?: number };
+  /** market lines carried on odds_move events */
+  totals?: TotalsLine;
+  totals1h?: TotalsLine;
+  ah?: { line: number; home: number; away: number }[];
   /** for odds_move: which outcome moved and by how much */
   outcome?: Outcome;
   delta?: number;
@@ -101,8 +115,8 @@ export interface Pick {
   matchLabel: string;
   outcome: PickOutcome;
   outcomeLabel: string;
-  /** "1x2" (default) or "totals" (over/under goals) */
-  market?: "1x2" | "totals";
+  /** which market this pick is on ("1x2" default) */
+  market?: "1x2" | "totals" | "totals1h" | "ah";
   line?: number;
   lockedOdds: number;
   currentOdds: number;

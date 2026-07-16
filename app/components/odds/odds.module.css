@@ -199,7 +199,39 @@
   font-size: 14px;
 }
 
-/* ---- over/under totals row ---- */
+/* ---- expandable markets ---- */
+
+.moreHint {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tma-fg-muted);
+}
+
+.moreChevron {
+  display: inline-flex;
+  color: var(--tma-primary);
+  transition: transform 0.25s;
+}
+
+.marketsPanel {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--tma-border);
+  will-change: transform, opacity;
+  animation: curtain 0.3s cubic-bezier(0.22, 0.9, 0.35, 1) both;
+}
 
 .totalsRow {
   flex-basis: 100%;

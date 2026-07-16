@@ -7,6 +7,7 @@ import {
 } from "@/app/lib/server/txline-server";
 import {
   extractSnapshotOdds,
+  normalizeAhUpdate,
   normalizeFixture,
   normalizeOddsUpdate,
   normalizeScoreUpdate,
@@ -21,16 +22,37 @@ import type { MatchEvent, Odds } from "@/app/types";
  *  2026-07-15: all odds snapshots returned [] while the stream kept
  *  pricing) — remember every price so /api/fixtures can fall back. */
 function rememberPrices(e: MatchEvent): void {
-  const patch: Record<string, string> = {};
-  if (e.odds) patch.odds = JSON.stringify(e.odds);
-  if (e.probs) patch.probs = JSON.stringify(e.probs);
-  if (e.totals) patch.totals = JSON.stringify(e.totals);
-  if (Object.keys(patch).length === 0) return;
-  patch.ts = String(Date.now());
-  redis()
-    .hset(`match:${e.matchId}:lastOdds`, patch)
-    .then(() => redis().expire(`match:${e.matchId}:lastOdds`, 12 * 3600))
-    .catch(() => {});
+  void (async () => {
+    try {
+      const key = `match:${e.matchId}:lastOdds`;
+      const patch: Record<string, string> = {};
+      if (e.odds) patch.odds = JSON.stringify(e.odds);
+      if (e.probs) patch.probs = JSON.stringify(e.probs);
+      if (e.totals) patch.totals = JSON.stringify(e.totals);
+      if (e.totals1h) patch.totals1h = JSON.stringify(e.totals1h);
+      if (e.ah && e.ah.length > 0) {
+        // merge the updated line into the remembered set (max 3, balanced first)
+        const prevRaw = await redis().hget<unknown>(key, "ah");
+        let prev: { line: number; home: number; away: number }[] = [];
+        try {
+          prev = typeof prevRaw === "string" ? JSON.parse(prevRaw) : ((prevRaw as typeof prev) ?? []);
+        } catch { prev = []; }
+        const merged = new Map(prev.map((l) => [l.line, l]));
+        for (const l of e.ah) merged.set(l.line, l);
+        patch.ah = JSON.stringify(
+          [...merged.values()]
+            .sort((a, b) => Math.abs(a.home - a.away) - Math.abs(b.home - b.away))
+            .slice(0, 3)
+        );
+      }
+      if (Object.keys(patch).length === 0) return;
+      patch.ts = String(Date.now());
+      await redis().hset(key, patch);
+      await redis().expire(key, 12 * 3600);
+    } catch {
+      /* memory is best-effort */
+    }
+  })();
 }
 
 export const dynamic = "force-dynamic";
@@ -67,6 +89,21 @@ export async function GET(request: Request) {
         }
       };
       request.signal.addEventListener("abort", close);
+
+      // sse comments: instant hello (defeats proxy buffering), 15s
+      // keepalive, and upstream errors surfaced for curl-debugging —
+      // EventSource clients ignore comment lines entirely
+      const comment = (s: string) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(`: ${s.replace(/\n/g, " ")}\n\n`));
+        } catch {
+          /* stream gone */
+        }
+      };
+      comment("connected");
+      const ka = setInterval(() => comment("ka"), 15000);
+      request.signal.addEventListener("abort", () => clearInterval(ka));
 
       // droid filter: null = pass everything (browser / no target yet)
       let followMatchId: string | null = null;
@@ -167,6 +204,7 @@ export async function GET(request: Request) {
             }
           } catch (err) {
             console.error(`${source} stream error:`, err);
+            comment(`err ${source}: ${String(err).slice(0, 140)}`);
           }
           if (!closed) await new Promise((r) => setTimeout(r, 3000)); // reconnect
         }
@@ -174,11 +212,16 @@ export async function GET(request: Request) {
 
       void pump("/api/odds/stream", "odds", (raw) => {
         const fixtureId = String(raw.FixtureId ?? raw.fixtureId ?? "");
-        // totals market? → totals odds_move
+        // totals / handicap markets → market odds_move
         const totalsEvent = normalizeTotalsUpdate(raw);
         if (totalsEvent) {
           rememberPrices(totalsEvent);
           return totalsEvent;
+        }
+        const ahEvent = normalizeAhUpdate(raw);
+        if (ahEvent) {
+          rememberPrices(ahEvent);
+          return ahEvent;
         }
         const event = normalizeOddsUpdate(raw, lastOdds.get(fixtureId));
         if (event?.odds) {

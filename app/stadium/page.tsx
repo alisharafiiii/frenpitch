@@ -148,8 +148,9 @@ export default function StadiumPage() {
         setFrens((prev) =>
           prev.map((f) => {
             if (!f.livePick || f.livePick.matchId !== e.matchId) return f;
-            // totals picks don't reprice from 1x2 moves
+            // only plain 1x2 picks reprice from 1x2 moves
             if (f.livePick.outcome === "over" || f.livePick.outcome === "under") return f;
+            if (f.livePick.market && f.livePick.market !== "1x2") return f;
             const cur = e.odds![f.livePick.outcome];
             // toy live-pnl model for the mock: value of position vs locked odds
             const pnl = Math.round(

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getApiToken, txGet } from "@/app/lib/server/txline-server";
 import {
+  extractSnapshotAh,
   extractSnapshotOdds,
   extractSnapshotTotals,
   normalizeFixture,
@@ -28,6 +29,14 @@ async function lastKnownPrices(m: Match): Promise<void> {
     if (!m.totals) {
       const totals = parse<NonNullable<Match["totals"]>>(h.totals);
       if (totals && totals.over > 1) m.totals = totals;
+    }
+    if (!m.totals1h) {
+      const t1h = parse<NonNullable<Match["totals1h"]>>(h.totals1h);
+      if (t1h && t1h.over > 1) m.totals1h = t1h;
+    }
+    if (!m.ah || m.ah.length === 0) {
+      const ah = parse<NonNullable<Match["ah"]>>(h.ah);
+      if (ah && ah.length > 0) m.ah = ah;
     }
   } catch {
     /* fallback only — never break fixtures */
@@ -73,11 +82,15 @@ export async function GET() {
           }
           const totals = extractSnapshotTotals(entries);
           if (totals) m.totals = totals;
+          const totals1h = extractSnapshotTotals(entries, "half1");
+          if (totals1h) m.totals1h = totals1h;
+          const ah = extractSnapshotAh(entries);
+          if (ah.length > 0) m.ah = ah;
         } catch {
           /* fixture without odds yet — leave zeros */
         }
-        // snapshot empty? use the stream-fed memory
-        if (m.odds.home === 0 || !m.totals) await lastKnownPrices(m);
+        // snapshot gaps? use the stream-fed memory
+        if (m.odds.home === 0 || !m.totals || !m.totals1h || !m.ah) await lastKnownPrices(m);
       })
     );
 

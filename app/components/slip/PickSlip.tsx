@@ -8,6 +8,49 @@ import styles from "./slip.module.css";
 
 const STAKES = [25, 100, 250];
 
+/** odds + human label for any selection — shared with the confirm flow */
+export function resolveSelection(
+  match: Match,
+  sel: Selection
+): { odds: number; label: string; line?: number } {
+  const pair = `${match.home.toLowerCase()}–${match.away.toLowerCase()}`;
+  if (sel.market === "totals" && match.totals) {
+    return {
+      odds: sel.outcome === "over" ? match.totals.over : match.totals.under,
+      label: `${sel.outcome} ${match.totals.line} goals · ${pair}`,
+      line: match.totals.line,
+    };
+  }
+  if (sel.market === "totals1h" && match.totals1h) {
+    return {
+      odds: sel.outcome === "over" ? match.totals1h.over : match.totals1h.under,
+      label: `1h ${sel.outcome} ${match.totals1h.line} · ${pair}`,
+      line: match.totals1h.line,
+    };
+  }
+  if (sel.market === "ah") {
+    const l = match.ah?.find((x) => x.line === sel.line);
+    if (l) {
+      const team = sel.outcome === "home" ? match.home : match.away;
+      return {
+        odds: sel.outcome === "home" ? l.home : l.away,
+        label: `${team.toLowerCase()} ${l.line > 0 ? "+" : ""}${l.line} handicap`,
+        line: l.line,
+      };
+    }
+  }
+  const o = sel.outcome as "home" | "draw" | "away";
+  return {
+    odds: match.odds[o],
+    label:
+      o === "draw"
+        ? "draw"
+        : o === "home"
+          ? `${match.homeFlag} ${match.home.toLowerCase()} to win`
+          : `${match.awayFlag} ${match.away.toLowerCase()} to win`,
+  };
+}
+
 export function PickSlip({
   match,
   sel,
@@ -22,20 +65,7 @@ export function PickSlip({
   onClose: () => void;
 }) {
   const [stake, setStake] = useState(100);
-  const odds =
-    sel.market === "totals"
-      ? sel.outcome === "over"
-        ? (match.totals?.over ?? 0)
-        : (match.totals?.under ?? 0)
-      : match.odds[sel.outcome as "home" | "draw" | "away"];
-  const label =
-    sel.market === "totals"
-      ? `${sel.outcome} ${match.totals?.line} goals · ${match.home.toLowerCase()}–${match.away.toLowerCase()}`
-      : sel.outcome === "draw"
-        ? "draw"
-        : sel.outcome === "home"
-          ? `${match.homeFlag} ${match.home.toLowerCase()} to win`
-          : `${match.awayFlag} ${match.away.toLowerCase()} to win`;
+  const { odds, label } = resolveSelection(match, sel);
 
   return (
     <>

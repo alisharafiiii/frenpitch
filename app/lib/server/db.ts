@@ -38,9 +38,9 @@ export interface PickRecord {
   matchLabel: string;
   outcome: "home" | "draw" | "away" | "over" | "under";
   outcomeLabel: string;
-  /** "1x2" (default, legacy picks have none) or "totals" */
-  market?: "1x2" | "totals";
-  /** totals line, e.g. 1.5 (only for market "totals") */
+  /** market ("1x2" default; legacy picks have none) */
+  market?: "1x2" | "totals" | "totals1h" | "ah";
+  /** market line: totals goals line, or ah handicap (home side) */
   line?: number;
   lockedOdds: number;
   stake: number;
