@@ -23,7 +23,14 @@ export async function GET(req: Request) {
 
   const cached = cache.get(text);
   if (cached) {
-    return new Response(cached, { headers: { "Content-Type": "audio/pcm" } });
+    return new Response(cached, {
+      headers: {
+        "Content-Type": "audio/pcm",
+        // explicit length — vercel otherwise streams chunked and the
+        // droid's HTTPClient.getSize() returns -1 (silent no-play)
+        "Content-Length": String(cached.byteLength),
+      },
+    });
   }
 
   // daily budget — a chatty droid shouldn't drain the credits
@@ -45,5 +52,10 @@ export async function GET(req: Request) {
   const pcm = await r.arrayBuffer();
   if (cache.size > 50) cache.clear(); // crude but bounded
   cache.set(text, pcm);
-  return new Response(pcm, { headers: { "Content-Type": "audio/pcm" } });
+  return new Response(pcm, {
+    headers: {
+      "Content-Type": "audio/pcm",
+      "Content-Length": String(pcm.byteLength),
+    },
+  });
 }
