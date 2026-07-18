@@ -434,7 +434,9 @@ export function normalizeScoreUpdate(raw: Raw): MatchEvent | null {
     return { ...base, type: "fulltime" };
   }
   if (status === 3) return { ...base, type: "halftime" };
-  if (action === "kick_off" || status === 2 || status === 4) {
+  // NOTE: status 2/4 = "in play" and rides on EVERY live entry (possession,
+  // throw-ins) — mapping it to kickoff spammed the bus. explicit action only.
+  if (action === "kick_off") {
     return { ...base, type: "kickoff" };
   }
 

@@ -470,7 +470,7 @@ static void speak(const char* text) {
       if (rd > 64) {
         int16_t* s = (int16_t*)pcm;
         size_t ns = rd / 2;
-        for (size_t i = 0; i < ns; i++) s[i] = (int16_t)(s[i] * 0.7f); // duck a touch
+        for (size_t i = 0; i < ns; i++) s[i] = (int16_t)(s[i] * 0.9f); // slight duck, keep it loud
         M5.Speaker.playRaw((const int16_t*)pcm, ns, 16000, false);
         while (M5.Speaker.isPlaying()) delay(20);
       }
@@ -609,13 +609,15 @@ static void handleEvent(JsonDocument& doc) {
     frameEnd();
   }
   else if (!strcmp(type, "kickoff")) {
-    match.live = true;
-    frameBegin();
-    soundNotify();
-    ticker("KICKOFF", "", C_GREEN);
-    frameEnd();
-    gReq = 1;
-    speak("kickoff! we are live");
+    if (!match.live) {              // txline tags all in-play noise status 2/4 —
+      match.live = true;            // only celebrate the FIRST kickoff
+      frameBegin();
+      soundNotify();
+      ticker("KICKOFF", "", C_GREEN);
+      frameEnd();
+      gReq = 1;
+      speak("kickoff! we are live");
+    }
   }
   else if (!strcmp(type, "halftime"))    { mood = M_SLEEPY; moodUntil = millis() + 15000; applyMood(); }
   else if (!strcmp(type, "fulltime")) {
@@ -723,7 +725,7 @@ static void banner(const char* l1, const char* l2, uint16_t col) {
 void setup() {
   auto cfg = M5.config();
   M5.begin(cfg);
-  M5.Speaker.setVolume(140);
+  M5.Speaker.setVolume(230);
 
   C_GREEN  = M5.Display.color565(126, 224, 74);
   C_AMBER  = M5.Display.color565(255, 179, 71);
@@ -768,6 +770,11 @@ void setup() {
   avatar.init();
   avatarUp = true;
   applyMood();
+
+  // boot hook — the droid introduces itself (wifi needed for the voice)
+  if (WiFi.status() == WL_CONNECTED) {
+    speak("betting alone is a spreadsheet. betting in a stadium full of your frens is a sport.");
+  }
 }
 
 void loop() {
