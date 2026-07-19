@@ -419,6 +419,13 @@ export function normalizeScoreUpdate(raw: Raw): MatchEvent | null {
   if (action.includes("goal") && !action.includes("kick")) {
     return { ...base, type: "goal", team };
   }
+  // VAR chalk-offs: txline logs the goal, then amends/discards it with the
+  // reverted Stats. forward as a silent score correction (clients update
+  // the scoreline at the top of their handlers regardless of event type).
+  if (action === "action_discarded" || action === "action_amend") {
+    if (base.scoreHome === undefined) return null;
+    return { ...base, type: "score_update" };
+  }
   if (action.includes("red_card")) return { ...base, type: "card_red", team };
   if (action.includes("yellow_card")) return { ...base, type: "card_yellow", team };
   if (action.includes("var")) return { ...base, type: "var_check" };

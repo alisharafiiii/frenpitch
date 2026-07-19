@@ -62,6 +62,7 @@ export interface MatchEvent {
     | "kickoff"
     | "corner"
     | "shot"
+    | "score_update"
     | "goal"
     | "own_goal"
     | "penalty_awarded"
