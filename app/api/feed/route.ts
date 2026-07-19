@@ -141,6 +141,36 @@ export async function GET(request: Request) {
               } catch {
                 /* no line yet — droid shows "waiting for line" */
               }
+              // seed match STATE — a droid connecting mid-game otherwise
+              // shows "upcoming" until the next goal/card flips it live
+              try {
+                const entries = await txGet<Record<string, unknown>[]>(
+                  `/api/scores/snapshot/${next}`
+                );
+                const byTs = [...entries].sort(
+                  (a, b) => Number(b.Ts ?? 0) - Number(a.Ts ?? 0)
+                );
+                const latestStatus = Number(
+                  byTs.find((e2) => e2.StatusId !== undefined)?.StatusId ?? -1
+                );
+                const withScore = byTs.find((e2) => {
+                  const st = e2.Stats as Record<string, number> | undefined;
+                  return st && st["1"] !== undefined;
+                });
+                const st = withScore?.Stats as Record<string, number> | undefined;
+                if (latestStatus === 2 || latestStatus === 3 || latestStatus === 4) {
+                  send({
+                    id: `state-${next}-${Date.now()}`,
+                    matchId: next,
+                    t: Date.now(),
+                    type: "kickoff",
+                    minute: 0,
+                    ...(st ? { scoreHome: Number(st["1"]), scoreAway: Number(st["2"] ?? 0) } : {}),
+                  });
+                }
+              } catch {
+                /* state seed is best-effort */
+              }
             } else {
               followMatchId = next;
             }
