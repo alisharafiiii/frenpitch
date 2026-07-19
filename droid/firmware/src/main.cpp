@@ -570,7 +570,7 @@ static void seqBigMove(float from, float to, const char* team) {
     M5.Display.fillScreen(C_BG);
     delay(120);
   }
-  mood = to < from ? M_HAPPY : M_DOUBT; moodUntil = millis() + 6000;
+  mood = to < from ? M_JOY : M_SQUINT; moodUntil = millis() + 6000;
   gReq = 1;                                      // perk up
   char say[72];
   snprintf(say, sizeof(say), "big move! %s %s to %d point %d", team,
