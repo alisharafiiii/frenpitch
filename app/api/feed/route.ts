@@ -224,7 +224,11 @@ export async function GET(request: Request) {
                 if (typeof ck?.Seconds === "number") {
                   lastMinute.set(next, Math.min(120, Math.round(ck.Seconds / 60)));
                 }
-                if (latestStatus === 2 || latestStatus === 3 || latestStatus === 4) {
+                // in-play statuses: 2/4 regulation halves, 3 breaks,
+                // 6-9 extra time phases (verified live: ET runs as 7).
+                // finished = 5/10/13/100, never seed those as live.
+                const IN_PLAY = [2, 3, 4, 6, 7, 8, 9];
+                if (IN_PLAY.includes(latestStatus)) {
                   send({
                     id: `state-${next}-${Date.now()}`,
                     matchId: next,
