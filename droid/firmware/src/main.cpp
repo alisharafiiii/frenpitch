@@ -510,6 +510,13 @@ static void ticker(const char* l1, const char* l2, uint16_t col) {
   if (l2[0]) centerText(l2, 160, C_DIM, 2);
   delay(2200);
 }
+// server-authored commentary — when an event carries "say", it wins over
+// the baked-in line. commentary upgrades become git pushes, not reflashes.
+static char serverSay[144] = "";
+static void speakOr(const char* fallback) {
+  speak(serverSay[0] ? serverSay : fallback);
+}
+
 static void seqGoal() {
   frameBegin();
   soundGoal();
@@ -522,7 +529,7 @@ static void seqGoal() {
   frameEnd();                      // avatar returns wearing Happy
   char say[64];
   snprintf(say, sizeof(say), "gooooal! %s %d, %s %d", match.home, match.scoreH, match.away, match.scoreA);
-  speak(say);
+  speakOr(say);
 }
 static void seqYellow() {
   frameBegin();
@@ -534,7 +541,7 @@ static void seqYellow() {
   ticker("CAUTION", m, C_AMBER);
   mood = M_SQUINT; moodUntil = millis() + 6000;
   frameEnd();                      // avatar returns wearing Doubt
-  speak("yellow card. careful now");
+  speakOr("yellow card. careful now");
 }
 static void seqRed() {
   frameBegin();
@@ -545,8 +552,34 @@ static void seqRed() {
   ticker("SENT OFF", m, C_RED);
   mood = M_SHOCK; moodUntil = millis() + 8000;
   frameEnd();                      // avatar returns wearing Angry
-  speak("red card! he is off!");
+  speakOr("red card! he is off!");
 }
+static void seqBigMove(float from, float to, const char* team) {
+  frameBegin();
+  soundRed();                                    // urgent double-beep
+  char buf[36];
+  snprintf(buf, sizeof(buf), "%s %.2f>%.2f", team, from, to);
+  for (int i = 0; i < 4; i++) {                  // strobe, goal-style
+    M5.Display.fillScreen(C_AMBER);
+    M5.Display.setTextSize(4); M5.Display.setTextDatum(middle_center);
+    M5.Display.setTextColor(C_BG);
+    M5.Display.drawString("BIG MOVE", M5.Display.width() / 2, M5.Display.height() / 2 - 20);
+    M5.Display.setTextSize(2);
+    M5.Display.drawString(buf, M5.Display.width() / 2, M5.Display.height() / 2 + 28);
+    delay(220);
+    M5.Display.fillScreen(C_BG);
+    delay(120);
+  }
+  mood = to < from ? M_HAPPY : M_DOUBT; moodUntil = millis() + 6000;
+  gReq = 1;                                      // perk up
+  char say[72];
+  snprintf(say, sizeof(say), "big move! %s %s to %d point %d", team,
+           to < from ? "crashing" : "drifting", (int)to, (int)roundf((to - (int)to) * 10));
+  speak(say);
+  idleFrame = 1; idleFlip = millis();
+  drawInfoPanel();
+}
+
 static void seqOddsMove(float from, float to, const char* team) {
   frameBegin();
   soundNotify();
@@ -580,6 +613,7 @@ static bool feedConnect() {
 
 static void handleEvent(JsonDocument& doc) {
   const char* type = doc["type"] | "";
+  strlcpy(serverSay, doc["say"] | "", sizeof(serverSay));
   match.minute = doc["minute"] | match.minute;
   if (doc["scoreHome"].is<int>()) match.scoreH = doc["scoreHome"];
   if (doc["scoreAway"].is<int>()) match.scoreA = doc["scoreAway"];
@@ -595,8 +629,11 @@ static void handleEvent(JsonDocument& doc) {
     if (prevH > 0 && match.oddsH != prevH) match.dirH = match.oddsH > prevH ? 1 : -1;
     if (prevA > 0 && match.oddsA != prevA) match.dirA = match.oddsA > prevA ? 1 : -1;
     if (doc["probs"]["home"].is<int>()) { match.probH = doc["probs"]["home"]; match.probA = doc["probs"]["away"]; }
-    if (match.live && prevH > 0 && fabsf(prevH - match.oddsH) >= 0.05f)
-      seqOddsMove(prevH, match.oddsH, match.home);
+    if (match.live && prevH > 0) {
+      float d = fabsf(prevH - match.oddsH);
+      if (d >= 0.60f)      seqBigMove(prevH, match.oddsH, match.home);  // market shock — strobe + voice
+      else if (d >= 0.20f) seqOddsMove(prevH, match.oddsH, match.home); // quiet flash (0.05 chirped nonstop)
+    }
   }
   else if (!strcmp(type, "goal") || !strcmp(type, "own_goal")) { match.live = true; seqGoal(); }
   else if (!strcmp(type, "card_yellow")) { match.live = true; seqYellow(); }
@@ -609,7 +646,7 @@ static void handleEvent(JsonDocument& doc) {
     ticker("CORNER", t, C_BLUE);
     frameEnd();
     char say[48]; snprintf(say, sizeof(say), "corner for %s", t);
-    speak(say);
+    speakOr(say);
   }
   else if (!strcmp(type, "shot")) {
     match.live = true;
@@ -632,7 +669,7 @@ static void handleEvent(JsonDocument& doc) {
       ticker("KICKOFF", "", C_GREEN);
       frameEnd();
       gReq = 1;
-      speak("kickoff! we are live");
+      speakOr("kickoff! we are live");
     }
   }
   else if (!strcmp(type, "halftime"))    { mood = M_SLEEPY; moodUntil = millis() + 15000; applyMood(); }
@@ -646,7 +683,7 @@ static void handleEvent(JsonDocument& doc) {
     gReq = 2;                      // nod goodnight
     char say[64];
     snprintf(say, sizeof(say), "full time. %s %d, %s %d", match.home, match.scoreH, match.away, match.scoreA);
-    speak(say);
+    speakOr(say);
   }
 }
 

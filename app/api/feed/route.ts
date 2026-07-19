@@ -74,6 +74,52 @@ export async function GET(request: Request) {
       let followMatchId: string | null = null;
       let followLabels: { home: string; away: string } | null = null;
 
+      // ---- server-authored commentary (droid speaks "say" when present) ----
+      const pickLine = (lines: string[]) =>
+        lines[Math.floor(Math.random() * lines.length)];
+      const commentary = (e: MatchEvent, home: string, away: string): string | undefined => {
+        const team = (e as { team?: "home" | "away" }).team === "away" ? away : home;
+        const other = team === home ? away : home;
+        const min = e.minute ? `${e.minute}` : "";
+        const score =
+          e.scoreHome !== undefined ? `${home} ${e.scoreHome}, ${away} ${e.scoreAway}` : "";
+        const late = (e.minute ?? 0) >= 85;
+        switch (e.type) {
+          case "goal":
+            return pickLine([
+              `GOOOOAL! ${team} strikes${min ? ` on ${min}` : ""}! ${score}!`,
+              `it's in! ${team} finds the net! ${score}!`,
+              `GOAL ${team}! the stadium erupts! ${score}!`,
+              late ? `${team} scores late! scenes! ${score}!` : `what a finish from ${team}! ${score}!`,
+            ]);
+          case "card_yellow":
+            return pickLine([
+              `yellow for ${team}${min ? ` on ${min}` : ""}. walking a tightrope now.`,
+              `booking. ${team} needs to keep a cool head.`,
+              `card comes out for ${team}. tempers are up.`,
+            ]);
+          case "card_red":
+            return pickLine([
+              `RED CARD! ${team} down to ten! this changes everything!`,
+              `he's off! ${team} in big trouble, ${other} smells blood.`,
+            ]);
+          case "corner":
+            return pickLine([
+              `corner ${team}. bodies in the box...`,
+              `${team} wins a corner. danger loading.`,
+              late ? `corner ${team} — late drama brewing!` : `corner for ${team}.`,
+            ]);
+          case "kickoff":
+            return e.scoreHome !== undefined && (e.scoreHome > 0 || (e.scoreAway ?? 0) > 0)
+              ? `we're live. ${score}${min ? `, minute ${min}` : ""}. locked in.`
+              : `kickoff! ${home} against ${away}. let's sweat together.`;
+          case "fulltime":
+            return `full time. ${score}. what a match, frens.`;
+          default:
+            return undefined;
+        }
+      };
+
       const send = (e: MatchEvent) => {
         if (closed) return;
         if (followUser && followMatchId && e.matchId !== followMatchId) return;
@@ -85,7 +131,14 @@ export async function GET(request: Request) {
         // real minute remembered from the scores stream so timers stay live
         const known = lastMinute.get(lean.matchId);
         if (known !== undefined && known > (lean.minute ?? 0)) lean.minute = known;
-        const out = followUser && followLabels ? { ...lean, ...followLabels } : lean;
+        const say =
+          followUser && followLabels
+            ? commentary(lean as MatchEvent, followLabels.home, followLabels.away)
+            : undefined;
+        const out =
+          followUser && followLabels
+            ? { ...lean, ...followLabels, ...(say ? { say: say.slice(0, 138) } : {}) }
+            : lean;
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(out)}\n\n`));
       };
 
