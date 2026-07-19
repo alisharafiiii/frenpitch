@@ -38,6 +38,7 @@ export async function GET(request: Request) {
 
   const encoder = new TextEncoder();
   const lastOdds = new Map<string, Odds>(); // fixtureId → previous odds (for deltas)
+  const lastMinute = new Map<string, number>(); // fixtureId → live match clock (from scores noise)
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -80,6 +81,10 @@ export async function GET(request: Request) {
         // Stats blob that overflows the droid's 4KB SSE line buffer (events
         // silently dropped). raw is already persisted by the recorder.
         const { raw: _raw, ...lean } = e as MatchEvent & { raw?: unknown };
+        // odds events carry minute 0 (their stream has no clock) — stamp the
+        // real minute remembered from the scores stream so timers stay live
+        const known = lastMinute.get(lean.matchId);
+        if (known !== undefined && known > (lean.minute ?? 0)) lean.minute = known;
         const out = followUser && followLabels ? { ...lean, ...followLabels } : lean;
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(out)}\n\n`));
       };
@@ -158,13 +163,21 @@ export async function GET(request: Request) {
                   return st && st["1"] !== undefined;
                 });
                 const st = withScore?.Stats as Record<string, number> | undefined;
+                const withClock = byTs.find((e2) => {
+                  const c = e2.Clock as { Seconds?: number } | undefined;
+                  return typeof c?.Seconds === "number";
+                });
+                const ck = withClock?.Clock as { Seconds?: number } | undefined;
+                if (typeof ck?.Seconds === "number") {
+                  lastMinute.set(next, Math.min(120, Math.round(ck.Seconds / 60)));
+                }
                 if (latestStatus === 2 || latestStatus === 3 || latestStatus === 4) {
                   send({
                     id: `state-${next}-${Date.now()}`,
                     matchId: next,
                     t: Date.now(),
                     type: "kickoff",
-                    minute: 0,
+                    minute: lastMinute.get(next) ?? 0,
                     ...(st ? { scoreHome: Number(st["1"]), scoreAway: Number(st["2"] ?? 0) } : {}),
                   });
                 }
@@ -228,7 +241,14 @@ export async function GET(request: Request) {
         }
         return event;
       });
-      void pump("/api/scores/stream", "scores", normalizeScoreUpdate);
+      void pump("/api/scores/stream", "scores", (raw) => {
+        const clock = raw.Clock as { Seconds?: number } | undefined;
+        const fid = String(raw.FixtureId ?? "");
+        if (fid && typeof clock?.Seconds === "number") {
+          lastMinute.set(fid, Math.min(120, Math.round(clock.Seconds / 60)));
+        }
+        return normalizeScoreUpdate(raw);
+      });
     },
   });
 
