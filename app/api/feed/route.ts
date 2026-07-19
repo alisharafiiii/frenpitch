@@ -76,7 +76,11 @@ export async function GET(request: Request) {
       const send = (e: MatchEvent) => {
         if (closed) return;
         if (followUser && followMatchId && e.matchId !== followMatchId) return;
-        const out = followUser && followLabels ? { ...e, ...followLabels } : e;
+        // strip the raw upstream payload — live score entries carry a huge
+        // Stats blob that overflows the droid's 4KB SSE line buffer (events
+        // silently dropped). raw is already persisted by the recorder.
+        const { raw: _raw, ...lean } = e as MatchEvent & { raw?: unknown };
+        const out = followUser && followLabels ? { ...lean, ...followLabels } : lean;
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(out)}\n\n`));
       };
 

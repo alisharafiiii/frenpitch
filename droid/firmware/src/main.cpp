@@ -601,6 +601,22 @@ static void handleEvent(JsonDocument& doc) {
   else if (!strcmp(type, "goal") || !strcmp(type, "own_goal")) { match.live = true; seqGoal(); }
   else if (!strcmp(type, "card_yellow")) { match.live = true; seqYellow(); }
   else if (!strcmp(type, "card_red"))    { match.live = true; seqRed(); }
+  else if (!strcmp(type, "corner")) {
+    match.live = true;
+    const char* t = !strcmp(doc["team"] | "home", "away") ? match.away : match.home;
+    frameBegin();
+    soundNotify();
+    ticker("CORNER", t, C_BLUE);
+    frameEnd();
+    char say[48]; snprintf(say, sizeof(say), "corner for %s", t);
+    speak(say);
+  }
+  else if (!strcmp(type, "shot")) {
+    match.live = true;
+    soundNotify();                          // quick chirp only — shots are
+    mood = M_SQUINT; moodUntil = millis() + 2500;  // frequent, voice would spam
+    applyMood();
+  }
   else if (!strcmp(type, "var_check")) {
     frameBegin();
     soundNotify();

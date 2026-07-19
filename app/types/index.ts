@@ -60,6 +60,8 @@ export interface MatchEvent {
   t: number;
   type:
     | "kickoff"
+    | "corner"
+    | "shot"
     | "goal"
     | "own_goal"
     | "penalty_awarded"

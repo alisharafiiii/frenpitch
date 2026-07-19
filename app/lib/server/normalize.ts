@@ -436,9 +436,12 @@ export function normalizeScoreUpdate(raw: Raw): MatchEvent | null {
   if (status === 3) return { ...base, type: "halftime" };
   // NOTE: status 2/4 = "in play" and rides on EVERY live entry (possession,
   // throw-ins) — mapping it to kickoff spammed the bus. explicit action only.
-  if (action === "kick_off") {
+  if (action === "kickoff") {
+    // txline's literal action name (verified live) — NOT "kick_off"
     return { ...base, type: "kickoff" };
   }
+  if (action === "corner") return { ...base, type: "corner", team };
+  if (action === "shot") return { ...base, type: "shot", team };
 
   // possession / throw-in noise — no ui event, but score corrections
   // still flow through when Stats changed (handled via goal above)
